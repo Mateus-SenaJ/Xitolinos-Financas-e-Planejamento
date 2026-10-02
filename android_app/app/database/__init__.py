@@ -1,0 +1,1 @@
+"""SQLite configuration and migrations."""

@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "desired_purchases",
+  "info": {
+    "singularName": "desired-purchase",
+    "pluralName": "desired-purchases",
+    "displayName": "Compra desejada",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 90
+    },
+    "amountCents": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "urgency": {
+      "type": "enumeration",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ],
+      "default": "normal"
+    },
+    "desiredDate": {
+      "type": "date",
+      "required": false
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "planned",
+        "purchased",
+        "cancelled"
+      ],
+      "default": "planned"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const appPath = new URL('../frontend/src/App.jsx', import.meta.url);
+let app = readFileSync(appPath, 'utf8');
+app = app.replace("{category.toLocaleLowerCase('pt-BR').includes('aliment') && <p className=\"advice-footnote\">A conta considera também o que você já planejou para alimentação.</p>}", "<p className=\"advice-footnote\">Limite recomendado para {category.toLocaleLowerCase('pt-BR')}: <strong>{money(decision.maximumRecommendedCents)}</strong>. Esse valor preserva a margem mínima configurada.</p>");
+app = app.replace("<Advice token={session.token} data={data} onToast={toast} mode={adviceMode}/>", "<Advice key={adviceMode} token={session.token} data={data} onToast={toast} mode={adviceMode}/>");
+app = app.replace("function Modal({ type, data, onClose, onSave, editRow })", "function Modal({ type, data, month = data.month, onClose, onSave, editRow })");
+app = app.replace("if (type === 'month-close') return <CloseMonthModal data={data} onClose={onClose} onSave={onSave}/>;", "if (type === 'month-close') return <CloseMonthModal data={data} month={month} onClose={onClose} onSave={onSave}/>;");
+app = app.replace("<Modal type={modal.type} data={data} editRow={modal.editRow}", "<Modal type={modal.type} data={data} month={modal.month || month} editRow={modal.editRow}");
+writeFileSync(appPath, app);
+
+const cssPath = new URL('../frontend/src/dashboard.css', import.meta.url);
+let css = readFileSync(cssPath, 'utf8');
+css = css.replace(".dashboard-highlight-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr); gap: 13px; margin: 0 0 13px; align-items: stretch; }", ".dashboard-highlight-grid, .dashboard-secondary-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr); gap: 13px; margin: 0 0 13px; align-items: stretch; }\n+.cashflow-forecast { min-width: 0; padding: 15px 16px; }\n+.cashflow-forecast .section-head { margin-bottom: 8px; }\n+.cashflow-legend { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 8px; }\n+.cashflow-legend i { width: 8px; height: 8px; border-radius: 2px; background: #159680; }\n+.cashflow-legend i:nth-of-type(2) { margin-left: 6px; background: #D9D9D9; }\n+.cashflow-chart { display: grid; height: 150px; grid-template-columns: repeat(7, minmax(27px, 1fr)); gap: 8px; align-items: end; padding: 10px 2px 0; }\n+.cashflow-month { display: grid; min-width: 0; height: 100%; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; gap: 6px; color: var(--muted); font-size: 8px; text-transform: capitalize; }\n+.cashflow-bars { display: flex; width: 100%; height: 100%; align-items: end; justify-content: center; gap: 4px; }\n+.cashflow-bars i { display: block; width: min(42%, 22px); min-height: 4px; border-radius: 5px 5px 0 0; }\n+.cashflow-income { background: #159680; }\n+.cashflow-expense { background: #D9D9D9; }\n+:root[data-theme=\"dark\"] .cashflow-expense { background: #68736A; }")
+  .replace(".delivery-preview { display: grid;", ".delivery-preview { display: grid;")
+  .replace("  .dashboard-highlight-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr); }", "  .dashboard-highlight-grid, .dashboard-secondary-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr); }\n+  .cashflow-chart { height: 135px; }")
+  .replace("  .dashboard-highlight-grid { grid-template-columns: 1fr; gap: 9px; margin-bottom: 9px; }", "  .dashboard-highlight-grid, .dashboard-secondary-grid { grid-template-columns: 1fr; gap: 9px; margin-bottom: 9px; }\n+  .cashflow-forecast { padding: 13px; border-radius: 13px; }\n+  .cashflow-chart { height: 118px; gap: 4px; }");
+writeFileSync(cssPath, css.replaceAll('\n+', '\n'));

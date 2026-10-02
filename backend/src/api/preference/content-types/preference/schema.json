@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "preferences",
+  "info": {
+    "singularName": "preference",
+    "pluralName": "preferences",
+    "displayName": "Preferência",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "theme": {
+      "type": "enumeration",
+      "enum": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "default": "light"
+    },
+    "accent": {
+      "type": "enumeration",
+      "enum": [
+        "green",
+        "lime",
+        "gold"
+      ],
+      "default": "green"
+    },
+    "minimumReserveCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "cardStopDaysBefore": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "avatarDataUrl": {
+      "type": "text"
+    },
+    "closeoutDay": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

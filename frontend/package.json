@@ -1,0 +1,27 @@
+{
+  "name": "xitolinos-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
+    "pdfjs-dist": "5.4.624",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.3",
+    "jsdom": "30.1.1",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "kind": "collectionType",
+  "collectionName": "transactions",
+  "info": {
+    "singularName": "transaction",
+    "pluralName": "transactions",
+    "displayName": "Movimentação",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "description": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "normalizedMerchant": {
+      "type": "string",
+      "required": false,
+      "maxLength": 120
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "income",
+        "expense",
+        "transfer"
+      ]
+    },
+    "amountCents": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "dueDate": {
+      "type": "date",
+      "required": false
+    },
+    "purchaseDate": {
+      "type": "date",
+      "required": false
+    },
+    "paidAt": {
+      "type": "date",
+      "required": false
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "account",
+        "pix",
+        "cash",
+        "debit",
+        "card",
+        "transfer"
+      ],
+      "default": "account"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "paid",
+        "pending",
+        "planned",
+        "settled",
+        "voided"
+      ],
+      "default": "paid"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "manual",
+        "card",
+        "recurrence",
+        "import"
+      ],
+      "default": "manual"
+    },
+    "installmentGroup": {
+      "type": "string",
+      "required": false,
+      "maxLength": 80
+    },
+    "installmentNumber": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "installmentCount": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "memo": {
+      "type": "text"
+    },
+    "deletedAt": {
+      "type": "datetime"
+    },
+    "legacyId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 120
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "counterpartyAccount": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "card": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::card.card"
+    },
+    "recurrence": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::recurrence.recurrence"
+    },
+    "incomeSource": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::income-source.income-source"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

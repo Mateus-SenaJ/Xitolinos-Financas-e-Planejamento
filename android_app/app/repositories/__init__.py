@@ -1,0 +1,1 @@
+"""SQLite repositories. UI and services never issue SQL directly."""

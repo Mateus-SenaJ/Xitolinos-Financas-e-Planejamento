@@ -1,0 +1,1 @@
+"""Automated offline-core tests."""

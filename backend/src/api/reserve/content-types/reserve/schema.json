@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reserves",
+  "info": {
+    "singularName": "reserve",
+    "pluralName": "reserves",
+    "displayName": "Reserva e investimento",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "emergency",
+        "savings",
+        "investment"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 70
+    },
+    "balanceCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "targetCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "annualYieldBasisPoints": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

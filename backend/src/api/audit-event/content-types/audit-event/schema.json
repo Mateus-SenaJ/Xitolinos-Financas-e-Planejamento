@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "audit_events",
+  "info": {
+    "singularName": "audit-event",
+    "pluralName": "audit-events",
+    "displayName": "Auditoria",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "action": {
+      "type": "string",
+      "required": true,
+      "maxLength": 40
+    },
+    "entityType": {
+      "type": "string",
+      "required": true,
+      "maxLength": 40
+    },
+    "entityId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 80
+    },
+    "beforeJson": {
+      "type": "json"
+    },
+    "afterJson": {
+      "type": "json"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

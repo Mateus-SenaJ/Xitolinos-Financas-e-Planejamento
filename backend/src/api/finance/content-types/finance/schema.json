@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "finance_actions",
+  "info": {
+    "singularName": "finance",
+    "pluralName": "finance-actions",
+    "displayName": "Operações financeiras",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": false,
+      "maxLength": 60
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

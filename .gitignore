@@ -1,0 +1,14 @@
+node_modules/
+.env
+backend/.env
+frontend/.env.local
+data/mysql/
+data/finance.sqlite*
+data/store.json
+data/*.log
+dist-installer/
+test-results/
+playwright-report/
+frontend/dist/
+backend/dist/
+*.pid

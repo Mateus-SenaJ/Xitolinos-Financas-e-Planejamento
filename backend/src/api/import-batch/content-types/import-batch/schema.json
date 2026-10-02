@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "import_batches",
+  "info": {
+    "singularName": "import-batch",
+    "pluralName": "import-batches",
+    "displayName": "Importação",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fileName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 180
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "review",
+        "completed"
+      ],
+      "default": "review"
+    },
+    "duplicateCount": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "acceptedCount": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+"""Shared domain primitives and application errors."""

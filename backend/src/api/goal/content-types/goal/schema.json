@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "goals",
+  "info": {
+    "singularName": "goal",
+    "pluralName": "goals",
+    "displayName": "Meta",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "targetCents": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "savedCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "dueDate": {
+      "type": "date",
+      "required": false
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

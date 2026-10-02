@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "merchant_rules",
+  "info": {
+    "singularName": "merchant-rule",
+    "pluralName": "merchant-rules",
+    "displayName": "Regra de estabelecimento",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "alias": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "normalizedAlias": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "canonicalName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

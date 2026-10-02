@@ -1,0 +1,26 @@
+{
+  "name": "xitolinos-planejamento",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Xitolinos Planejamento Financeiro Pessoal",
+  "workspaces": ["backend", "frontend", "Elétron"],
+  "scripts": {
+    "start": "node scripts/dev.js",
+    "dev": "node scripts/dev.js",
+    "build:web": "npm --workspace frontend run build",
+    "build:api": "npm --workspace backend run build",
+    "desktop": "npm run start --workspace xitolinos-desktop",
+    "desktop:package": "npm run build:web && npm run build:api && npm run package --workspace xitolinos-desktop",
+    "dev:api": "npm --workspace backend run develop",
+    "dev:web": "npm --workspace frontend run dev -- --host 127.0.0.1",
+    "db:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Start",
+    "db:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Status",
+    "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Stop",
+    "test:unit": "node --test test backend/test",
+    "test:web": "npm --workspace frontend run test",
+    "test:e2e": "playwright test",
+    "test": "npm run test:unit && npm run test:web"
+  },
+  "devDependencies": { "@playwright/test": "1.63.0" },
+  "engines": { "node": ">=22.0.0" }
+}

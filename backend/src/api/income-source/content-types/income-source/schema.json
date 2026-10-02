@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "income_sources",
+  "info": {
+    "singularName": "income-source",
+    "pluralName": "income-sources",
+    "displayName": "Fonte de renda",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 90
+    },
+    "amountCents": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "frequency": {
+      "type": "enumeration",
+      "enum": [
+        "once",
+        "weekly",
+        "fortnightly",
+        "monthly",
+        "yearly"
+      ],
+      "default": "monthly"
+    },
+    "nextDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date",
+      "required": false
+    },
+    "occurrencesRemaining": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "reminderDaysBefore": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "alertEnabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

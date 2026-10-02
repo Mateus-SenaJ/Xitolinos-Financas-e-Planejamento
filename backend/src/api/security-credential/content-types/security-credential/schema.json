@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "security_credentials",
+  "info": {
+    "singularName": "security-credential",
+    "pluralName": "security-credentials",
+    "displayName": "Biometria deste dispositivo",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "credentialId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "publicKey": {
+      "type": "text",
+      "required": true
+    },
+    "counter": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "transports": {
+      "type": "json"
+    },
+    "deviceName": {
+      "type": "string",
+      "required": false,
+      "maxLength": 80
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

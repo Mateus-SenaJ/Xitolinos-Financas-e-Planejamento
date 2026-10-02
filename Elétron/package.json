@@ -1,0 +1,37 @@
+{
+  "name": "xitolinos-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicativo desktop local e offline do Xitolinos Planejamento",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^26.2.0"
+  },
+  "build": {
+    "appId": "com.xitolinos.planejamento",
+    "productName": "Xitolinos Planejamento",
+    "directories": { "output": "../dist-installer" },
+    "files": ["main.cjs", "preload.cjs", "package.json"],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "xitolinos",
+        "filter": [
+        "backend/**", "frontend/dist/**", "node_modules/**", "scripts/**", "público/**",
+          "data/finance.sqlite", "data/finance.sqlite-wal", "data/finance.sqlite-shm", "data/store.json",
+          "package.json", "!node_modules/.cache/**", "!node_modules/@playwright/**", "!node_modules/playwright/**",
+          "!node_modules/@electron/**", "!node_modules/electron/**", "!node_modules/electron-builder/**",
+          "!node_modules/.bin/**", "!node_modules/**/test/**", "!node_modules/**/tests/**"
+        ]
+      },
+      { "from": "C:/Program Files/nodejs/node.exe", "to": "xitolinos/runtime/node.exe" }
+    ],
+    "win": { "target": "nsis", "artifactName": "Xitolinos-Planejamento-${version}-Setup.${ext}" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
+  }
+}

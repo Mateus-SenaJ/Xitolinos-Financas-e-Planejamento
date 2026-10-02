@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "billing_subscriptions",
+  "info": {
+    "singularName": "billing-subscription",
+    "pluralName": "billing-subscriptions",
+    "displayName": "Assinatura Xitolinos",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "provider": {
+      "type": "enumeration",
+      "enum": [
+        "local",
+        "stripe"
+      ],
+      "default": "local"
+    },
+    "plan": {
+      "type": "string",
+      "required": true,
+      "maxLength": 40
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "local",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled"
+      ],
+      "default": "local"
+    },
+    "customerId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 120
+    },
+    "subscriptionId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 120
+    },
+    "periodEnd": {
+      "type": "date",
+      "required": false
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

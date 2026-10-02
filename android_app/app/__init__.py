@@ -1,0 +1,1 @@
+"""Offline-first Python core for the Saldo Android application."""

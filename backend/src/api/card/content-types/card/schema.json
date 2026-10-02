@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cards",
+  "info": {
+    "singularName": "card",
+    "pluralName": "cards",
+    "displayName": "Cartão",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 60
+    },
+    "network": {
+      "type": "string",
+      "required": false,
+      "maxLength": 30
+    },
+    "lastFour": {
+      "type": "string",
+      "required": false,
+      "maxLength": 4
+    },
+    "closingDay": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "dueDay": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "limitCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

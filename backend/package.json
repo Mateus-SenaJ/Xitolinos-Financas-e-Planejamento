@@ -1,0 +1,24 @@
+{
+  "name": "@xitolinos/api",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "generate:schemas": "node generate-schemas.js",
+    "develop": "npm run generate:schemas && node ../scripts/strapi-run.js develop",
+    "start": "npm run generate:schemas && node ../scripts/strapi-run.js start",
+    "build": "npm run generate:schemas && node ../scripts/strapi-run.js build",
+    "test": "node --test test"
+  },
+  "dependencies": {
+    "@strapi/plugin-users-permissions": "5.56.0",
+    "@strapi/strapi": "5.56.0",
+    "@simplewebauthn/server": "^13.2.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "^6.30.3",
+    "styled-components": "^6.0.0",
+    "mysql2": "3.24.5",
+    "stripe": "^19.3.0"
+  },
+  "engines": { "node": ">=22.0.0" }
+}

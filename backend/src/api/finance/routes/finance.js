@@ -1,0 +1,27 @@
+'use strict';
+module.exports = {
+  routes: [
+    ['GET', '/finance/dashboard', 'dashboard'],
+    ['GET', '/finance/accounts', 'accounts'], ['POST', '/finance/accounts', 'createAccount'],
+    ['GET', '/finance/categories', 'categories'], ['POST', '/finance/categories', 'createCategory'],
+    ['POST', '/finance/transactions', 'createTransaction'], ['PUT', '/finance/transactions/:id', 'updateTransaction'],
+    ['POST', '/finance/transactions/:id/delete', 'deleteTransaction'], ['POST', '/finance/transactions/:id/restore', 'restoreTransaction'],
+    ['POST', '/finance/installments/:group/settle', 'settleInstallments'],
+    ['GET', '/finance/cards', 'cards'], ['POST', '/finance/cards', 'createCard'], ['POST', '/finance/cards/:id/settle', 'settleCard'],
+    ['GET', '/finance/recurrences', 'recurrences'], ['POST', '/finance/recurrences', 'createRecurrence'], ['POST', '/finance/recurrences/:id/complete', 'completeRecurrence'],
+    ['GET', '/finance/incomes', 'incomeSources'], ['POST', '/finance/incomes', 'createIncomeSource'], ['POST', '/finance/incomes/:id/receive', 'receiveIncome'],
+    ['GET', '/finance/reserves', 'reserves'], ['POST', '/finance/reserves', 'upsertReserve'], ['POST', '/finance/reserves/:id/movement', 'reserveMovement'],
+    ['GET', '/finance/goals', 'goals'], ['POST', '/finance/goals', 'createGoal'],
+    ['GET', '/finance/budgets', 'budgets'], ['POST', '/finance/budgets', 'upsertBudget'],
+    ['GET', '/finance/preferences', 'preferences'], ['PUT', '/finance/preferences', 'updatePreferences'],
+    ['POST', '/finance/decision', 'spendDecision'], ['POST', '/finance/month-close', 'closeMonth'],
+    ['POST', '/finance/import/rows', 'inspectImport'], ['POST', '/finance/import/confirm', 'confirmImport'],
+    ['GET', '/finance/export', 'exportMonth'], ['GET', '/finance/audit', 'audit'],
+    ['POST', '/finance/restore', 'restoreBackup'],
+    ['GET', '/finance/security/status', 'securityStatus'],
+    ['GET', '/finance/security/registration/options', 'registrationOptions'], ['POST', '/finance/security/registration/verify', 'registrationVerify'],
+    ['GET', '/finance/security/authentication/options', 'authenticationOptions'], ['POST', '/finance/security/authentication/verify', 'authenticationVerify'],
+    ['POST', '/finance/security/credential/remove', 'removeSecurityCredential'],
+    ['GET', '/finance/billing', 'billingStatus'], ['POST', '/finance/billing/checkout', 'billingCheckout']
+  ].map(([method, path, action]) => ({ method, path, handler: `finance.${action}`, config: { auth: false } }))
+};

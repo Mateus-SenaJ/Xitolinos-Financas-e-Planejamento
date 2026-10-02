@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "accounts",
+  "info": {
+    "singularName": "account",
+    "pluralName": "accounts",
+    "displayName": "Conta",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 60
+    },
+    "institution": {
+      "type": "string",
+      "required": false,
+      "maxLength": 60
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "checking",
+        "digital",
+        "cash",
+        "savings",
+        "reserve",
+        "investment",
+        "other"
+      ],
+      "default": "checking"
+    },
+    "openingBalanceCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "isLiquid": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

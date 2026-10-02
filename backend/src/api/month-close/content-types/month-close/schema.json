@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "month_closes",
+  "info": {
+    "singularName": "month-close",
+    "pluralName": "month-closes",
+    "displayName": "Fechamento mensal",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "month": {
+      "type": "string",
+      "required": true,
+      "maxLength": 7
+    },
+    "cardPaid": {
+      "type": "boolean",
+      "default": false
+    },
+    "deficitCovered": {
+      "type": "boolean",
+      "default": false
+    },
+    "reserveWithdrawalCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "savingsWithdrawalCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "investmentWithdrawalCents": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "confirmedAt": {
+      "type": "datetime"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

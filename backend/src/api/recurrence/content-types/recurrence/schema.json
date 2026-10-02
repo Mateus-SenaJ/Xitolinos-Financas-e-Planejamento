@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recurrences",
+  "info": {
+    "singularName": "recurrence",
+    "pluralName": "recurrences",
+    "displayName": "Despesa recorrente",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 90
+    },
+    "amountCents": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "frequency": {
+      "type": "enumeration",
+      "enum": [
+        "weekly",
+        "fortnightly",
+        "monthly",
+        "yearly"
+      ],
+      "default": "monthly"
+    },
+    "dayOfMonth": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date",
+      "required": false
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "account",
+        "pix",
+        "cash",
+        "debit",
+        "card"
+      ],
+      "default": "account"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "account": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::account.account"
+    },
+    "card": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::card.card"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
