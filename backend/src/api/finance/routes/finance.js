@@ -15,6 +15,8 @@ module.exports = {
     ['GET', '/finance/budgets', 'budgets'], ['POST', '/finance/budgets', 'upsertBudget'],
     ['GET', '/finance/preferences', 'preferences'], ['PUT', '/finance/preferences', 'updatePreferences'],
     ['POST', '/finance/decision', 'spendDecision'], ['POST', '/finance/month-close', 'closeMonth'],
+    ['GET', '/finance/shopping', 'shoppingState'], ['PUT', '/finance/shopping', 'saveShoppingState'],
+    ['POST', '/finance/shopping/commit', 'commitShoppingList'],
     ['POST', '/finance/import/rows', 'inspectImport'], ['POST', '/finance/import/confirm', 'confirmImport'],
     ['GET', '/finance/export', 'exportMonth'], ['GET', '/finance/audit', 'audit'],
     ['POST', '/finance/restore', 'restoreBackup'],

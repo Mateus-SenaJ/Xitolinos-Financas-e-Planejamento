@@ -80,7 +80,8 @@
         "manual",
         "card",
         "recurrence",
-        "import"
+        "import",
+        "shopping"
       ],
       "default": "manual"
     },
@@ -104,6 +105,19 @@
     },
     "deletedAt": {
       "type": "datetime"
+    },
+    "shoppingImportId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 80,
+      "unique": true
+    },
+    "spendingContext": {
+      "type": "enumeration",
+      "enum": [
+        "routine",
+        "extra"
+      ]
     },
     "legacyId": {
       "type": "string",

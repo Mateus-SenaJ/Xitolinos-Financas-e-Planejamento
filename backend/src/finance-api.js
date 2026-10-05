@@ -3,6 +3,7 @@
 const { errors } = require('@strapi/utils');
 const crypto = require('node:crypto');
 const stripeBilling = require('./integrations/stripe-billing');
+const { normalizeShoppingBoard, shoppingListTotalCents } = require('./shopping-board');
 const { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 const {
   validMonth, monthKey, monthDate, shiftMonth, normalizeMerchant, installments,
@@ -11,8 +12,33 @@ const {
 
 const uid = name => `api::${name}.${name}`;
 const populate = '*';
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 const money = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
+
+function buildNotifications({ today: date, preferences = {}, cardAlerts = [], cards = [], transactions = [], incomeSources = [], closes = [] }) {
+  const currentMonth = date.slice(0, 7);
+  const currentDay = Number(date.slice(8, 10));
+  const priorMonth = shiftMonth(currentMonth, -1);
+  const daysBetween = target => Math.ceil((Date.parse(`${target}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86400000);
+  return [
+    ...cardAlerts.filter(item => item.daysUntilClosing <= Number(preferences.cardStopDaysBefore ?? 3)).map(item => ({ id: `closing-${item.cardId}`, kind: 'card-closing', title: `Fechamento do ${item.cardName}`, message: item.message, month: currentMonth })),
+    ...cards.filter(card => card.active).flatMap(card => {
+      const invoiceRows = transactions.filter(row => row.cardId === card.id && row.status !== 'voided' && monthKey(row.dueDate || row.date) === currentMonth);
+      const invoiceCents = invoiceRows.reduce((sum, row) => sum + row.amountCents, 0);
+      const paidCents = invoiceRows.filter(row => row.status === 'paid').reduce((sum, row) => sum + row.amountCents, 0);
+      if (invoiceCents <= paidCents) return [];
+      const monthEnd = new Date(Date.UTC(Number(currentMonth.slice(0, 4)), Number(currentMonth.slice(5, 7)), 0)).getUTCDate();
+      const dueDate = `${currentMonth}-${String(Math.min(Number(card.dueDay), monthEnd)).padStart(2, '0')}`;
+      const daysUntil = daysBetween(dueDate);
+      return daysUntil <= 3 ? [{ id: `invoice-${card.id}-${currentMonth}`, kind: 'card-due', title: `Fatura do ${card.name}`, message: `${daysUntil < 0 ? 'Venceu' : 'Vence'} em ${dueDate.slice(-2)}/${currentMonth.slice(5, 7)}; ${money(invoiceCents - paidCents)} ainda consta em aberto.`, month: currentMonth }] : [];
+    }),
+    ...incomeSources.filter(item => item.active && item.alertEnabled && item.nextDate).flatMap(item => {
+      const daysUntil = daysBetween(item.nextDate);
+      return daysUntil <= Number(item.reminderDaysBefore || 0) ? [{ id: `income-${item.id}-${item.nextDate}`, kind: 'income-due', title: `Acompanhe ${item.name}`, message: `${daysUntil < 0 ? 'Estava previsto para' : 'Previsto para'} ${item.nextDate.slice(-2)}/${item.nextDate.slice(5, 7)}: ${money(item.amountCents)}.`, month: item.nextDate.slice(0, 7) }] : [];
+    }),
+    ...(currentDay >= Number(preferences.closeoutDay || 1) && !closes.some(item => item.month === priorMonth) ? [{ id: `close-${priorMonth}`, kind: 'month-close', title: `Feche ${priorMonth}`, message: 'Confirme o pagamento das faturas e registre se precisou cobrir algum saldo com suas reservas.', month: priorMonth }] : [])
+  ];
+}
 const strip = row => row ? JSON.parse(JSON.stringify(row)) : row;
 const webAuthnCeremonies = new Map();
 const sensitiveProofs = new Map();
@@ -93,6 +119,7 @@ function flatTransaction(row) {
     type: row.type, amountCents: row.amountCents, date: row.date, dueDate: row.dueDate,
     purchaseDate: row.purchaseDate, method: row.method, status: row.status, source: row.source,
     installmentGroup: row.installmentGroup, installmentNumber: row.installmentNumber,
+    spendingContext: row.spendingContext, shoppingImportId: row.shoppingImportId,
     installmentCount: row.installmentCount, categoryId: relationId(row.category),
     category: row.category?.name || 'Outros', accountId: relationId(row.account), accountName: accountName(row),
     cardId: relationId(row.card), cardName: row.card?.name || '', recurrenceId: relationId(row.recurrence),
@@ -239,7 +266,7 @@ async function dashboardData(strapi, userId, selectedMonth) {
     const closingDay = Math.min(Number(card.closingDay), new Date(Date.UTC(closingYear, closingMonthNumber, 0)).getUTCDate());
     const closingDate = `${closingMonth}-${String(closingDay).padStart(2, '0')}`;
     const untilClosing = Math.ceil((Date.parse(`${closingDate}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86400000);
-    const days = prefs.cardStopDaysBefore || 3;
+    const days = prefs.cardStopDaysBefore ?? 3;
     return { cardId: card.id, cardName: card.name, closingDay: card.closingDay, dueDay: card.dueDay, daysUntilClosing: untilClosing,
       message: untilClosing <= days ? `A fatura fecha em ${card.closingDay}; novas compras entram no próximo ciclo.` : `A fatura fecha no dia ${card.closingDay} e vence no dia ${card.dueDay}.` };
   });
@@ -254,19 +281,7 @@ async function dashboardData(strapi, userId, selectedMonth) {
     ? Math.round(completedMonths.reduce((sum, item) => sum + item.expenseCents, 0) / completedMonths.length)
     : recurrencesRaw.filter(item => item.active && item.frequency === 'monthly').reduce((sum, item) => sum + item.amountCents, 0);
   const priorMonth = shiftMonth(currentMonth, -1);
-  const notifications = [
-    ...cardAlerts.filter(item => item.daysUntilClosing <= Number(prefs.cardStopDaysBefore || 3)).map(item => ({ id: `closing-${item.cardId}`, kind: 'card-closing', title: `Fechamento do ${item.cardName}`, message: item.message, month: currentMonth })),
-    ...cardInvoices.filter(item => item.invoiceCents > item.paidCents).flatMap(item => {
-      const dueDate = `${currentMonth}-${String(Math.min(item.dueDay, new Date(Date.UTC(Number(currentMonth.slice(0, 4)), Number(currentMonth.slice(5, 7)), 0)).getUTCDate())).padStart(2, '0')}`;
-      const daysUntil = Math.ceil((Date.parse(`${dueDate}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86400000);
-      return daysUntil >= 0 && daysUntil <= 3 ? [{ id: `invoice-${item.id}-${currentMonth}`, kind: 'card-due', title: `Fatura do ${item.name}`, message: `Vence em ${dueDate.slice(-2)}/${currentMonth.slice(5, 7)}; ${money(item.invoiceCents - item.paidCents)} ainda consta em aberto.`, month: currentMonth }] : [];
-    }),
-    ...incomeSources.filter(item => item.active && item.alertEnabled && item.nextDate).flatMap(item => {
-      const daysUntil = Math.ceil((Date.parse(`${item.nextDate}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86400000);
-      return daysUntil >= 0 && daysUntil <= Number(item.reminderDaysBefore || 0) ? [{ id: `income-${item.id}-${item.nextDate}`, kind: 'income-due', title: `Acompanhe ${item.name}`, message: `${money(item.amountCents)} previsto para ${item.nextDate.slice(-2)}/${item.nextDate.slice(5, 7)}.`, month: item.nextDate.slice(0, 7) }] : [];
-    }),
-    ...(currentDay >= Number(prefs.closeoutDay || 1) && !closes.some(item => item.month === priorMonth) ? [{ id: `close-${priorMonth}`, kind: 'month-close', title: `Feche ${priorMonth}`, message: 'Confirme o pagamento das faturas e registre se precisou cobrir algum saldo com suas reservas.', month: priorMonth }] : [])
-  ];
+  const notifications = buildNotifications({ today: today(), preferences: prefs, cardAlerts, cards, transactions, incomeSources, closes });
   const delivery = categoryTotals(transactions.filter(row => row.date >= `${currentMonth}-01` && row.date <= today()));
   const close = closes.find(item => item.month === month) || null;
   return {
@@ -334,7 +349,9 @@ async function createTransaction(strapi, user, input, extra = {}) {
       installmentNumber: count > 1 ? index + 1 : 0, installmentCount: count,
       account: type === 'income' || type === 'transfer' || method !== 'card' ? account.id : card.account?.id || account.id,
       counterpartyAccount: destination?.id, category: categoryFallback?.id, card: card?.id,
-      recurrence: extra.recurrenceId, incomeSource: extra.incomeSourceId, memo: String(input.memo || '').slice(0, 500), owner: user.id
+      recurrence: extra.recurrenceId, incomeSource: extra.incomeSourceId, shoppingImportId: extra.shoppingImportId,
+      spendingContext: type === 'expense' && ['routine','extra'].includes(input.spendingContext) ? input.spendingContext : undefined,
+      memo: String(input.memo || '').slice(0, 500), owner: user.id
     } });
     created.push(item);
   }
@@ -391,7 +408,7 @@ function autoProjectionDateFor(textValue, card) {
 
 const backupTypes = [
   'account','category','card','recurrence','income-source','reserve','goal','budget','preference',
-  'month-close','merchant-rule','desired-purchase','transaction'
+  'month-close','merchant-rule','desired-purchase','shopping-state','transaction'
 ];
 const backupFields = {
   account: ['name','institution','type','openingBalanceCents','isLiquid','status','notes'],
@@ -406,7 +423,8 @@ const backupFields = {
   'month-close': ['month','cardPaid','deficitCovered','reserveWithdrawalCents','savingsWithdrawalCents','investmentWithdrawalCents','notes','confirmedAt'],
   'merchant-rule': ['alias','normalizedAlias','canonicalName','category'],
   'desired-purchase': ['name','amountCents','urgency','desiredDate','category','status'],
-  transaction: ['description','normalizedMerchant','type','amountCents','date','dueDate','purchaseDate','paidAt','method','status','source','installmentGroup','installmentNumber','installmentCount','memo','deletedAt','account','counterpartyAccount','category','card','recurrence','incomeSource']
+  'shopping-state': ['lists','stock'],
+  transaction: ['description','normalizedMerchant','type','amountCents','date','dueDate','purchaseDate','paidAt','method','status','source','installmentGroup','installmentNumber','installmentCount','memo','deletedAt','shoppingImportId','spendingContext','account','counterpartyAccount','category','card','recurrence','incomeSource']
 };
 const backupRelations = {
   category: { parent: 'category' }, card: { account: 'account' },
@@ -426,7 +444,7 @@ function backupKey(name, row) {
   if (name === 'recurrence' || name === 'income-source' || name === 'goal') return row.name;
   if (name === 'reserve') return row.kind;
   if (name === 'budget') return `${row.month}|${row.categoryName}`;
-  if (name === 'preference') return 'primary';
+  if (name === 'preference' || name === 'shopping-state') return 'primary';
   if (name === 'month-close') return row.month;
   if (name === 'merchant-rule') return `${row.normalizedAlias}|${row.canonicalName}`;
   if (name === 'desired-purchase') return `${row.name}|${row.status}`;
@@ -455,11 +473,17 @@ async function restoreBackup(strapi, user, input) {
         if (!oldId) throw new errors.ValidationError(`Um registro de ${name} não possui identificador de origem.`);
         if (idMaps[name].has(oldId)) continue;
         const record = {};
+        let restoredShoppingState = null;
+        if (name === 'shopping-state') {
+          try { restoredShoppingState = normalizeShoppingBoard({ lists: source.lists, stock: source.stock }); }
+          catch (error) { throw new errors.ValidationError(`Estado de compras inv\u00E1lido no backup: ${error.message}`); }
+        }
         for (const field of backupFields[name]) {
           if (source[field] === undefined) continue;
           const targetType = backupRelations[name]?.[field];
           const reference = targetType ? backupRelationId(source[field]) : null;
-          record[field] = targetType ? (reference == null ? null : idMaps[targetType].get(String(reference)) || null) : source[field];
+          record[field] = targetType ? (reference == null ? null : idMaps[targetType].get(String(reference)) || null)
+            : restoredShoppingState && (field === 'lists' || field === 'stock') ? restoredShoppingState[field] : source[field];
         }
         const item = await strapi.entityService.create(uid(name), { data: { ...record, owner: user.id } });
         idMaps[name].set(oldId, item.id);
@@ -563,6 +587,56 @@ function makeActions(strapi) {
       return { removed: true, credentialCount: (await ownedRows(strapi, 'security-credential', user.id)).length };
     }),
     dashboard: ctx => withUser(ctx, false, async user => ({ ...(await dashboardData(strapi, user.id, ctx.query.month)), profile: { username: user.username, email: user.email, profile: user.profile } })),
+    shoppingState: ctx => withUser(ctx, false, async user => {
+      const row = (await ownedRows(strapi, 'shopping-state', user.id))[0];
+      return { lists: row?.lists || [], stock: row?.stock || [] };
+    }),
+    saveShoppingState: ctx => withUser(ctx, true, async user => {
+      const current = (await ownedRows(strapi, 'shopping-state', user.id))[0];
+      let board;
+      try { board = normalizeShoppingBoard(ctx.request.body || {}, current || {}); }
+      catch (error) { throw new errors.ValidationError(error.message); }
+      const data = { lists: board.lists, stock: board.stock, owner: user.id };
+      const row = current
+        ? await strapi.entityService.update(uid('shopping-state'), current.id, { data })
+        : await strapi.entityService.create(uid('shopping-state'), { data });
+      await audit(strapi, user, current ? 'update' : 'create', 'shopping-state', row.id, null,
+        { listCount: board.lists.length, itemCount: board.lists.reduce((sum, list) => sum + list.items.length, 0), stockCount: board.stock.length });
+      return { lists: row.lists || [], stock: row.stock || [] };
+    }),
+    commitShoppingList: ctx => withUser(ctx, true, async user => {
+      const body = ctx.request.body || {};
+      const month = validMonth(body.month);
+      const shoppingState = (await ownedRows(strapi, 'shopping-state', user.id))[0];
+      if (!shoppingState) throw new errors.NotFoundError('Lista de compras não encontrada.');
+      const lists = shoppingState.lists || [];
+      const index = lists.findIndex(item => item.id === String(body.listId || '') && item.month === month);
+      if (index < 0) throw new errors.NotFoundError('Lista de compras não encontrada.');
+      const list = lists[index];
+      const purchaseDate = isoDate(body.date || today());
+      if (monthKey(purchaseDate) !== month) throw new errors.ValidationError('A data da compra precisa pertencer ao m\u00EAs da lista.');
+      if (list.financialTransactionId) {
+        const linked = await ownedRecord(strapi, 'transaction', user.id, list.financialTransactionId);
+        return { alreadyRecorded: true, amountCents: linked.amountCents, transaction: flatTransaction(linked) };
+      }
+      const previousTransaction = (await ownedRows(strapi, 'transaction', user.id)).find(item => item.shoppingImportId === list.id);
+      if (previousTransaction) {
+        lists[index] = { ...list, financialTransactionId: previousTransaction.id };
+        await strapi.entityService.update(uid('shopping-state'), shoppingState.id, { data: { lists, stock: shoppingState.stock || [] } });
+        return { alreadyRecorded: true, amountCents: previousTransaction.amountCents, transaction: flatTransaction(previousTransaction) };
+      }
+      const amountCents = shoppingListTotalCents(list);
+      if (!amountCents) throw new errors.ValidationError('Informe o preço pago e marque ao menos um item comprado antes de registrar a despesa.');
+      const created = await createTransaction(strapi, user, {
+        description: `Compras ${list.name}`.slice(0, 120), amountCents, date: purchaseDate,
+        type: 'expense', method: body.method || 'account', accountId: body.accountId,
+        categoryId: body.categoryId, memo: `Lista local ${list.id}`
+      }, { source: 'shopping', shoppingImportId: list.id });
+      lists[index] = { ...list, financialTransactionId: created.items[0].id };
+      await strapi.entityService.update(uid('shopping-state'), shoppingState.id, { data: { lists, stock: shoppingState.stock || [] } });
+      await audit(strapi, user, 'shopping-expense', 'transaction', created.items[0].id, null, { shoppingListId: list.id, amountCents });
+      return { alreadyRecorded: false, amountCents, transaction: created.items[0] };
+    }),
     accounts: ctx => withUser(ctx, false, async user => ({ items: (await ownedRows(strapi, 'account', user.id, { name: 'asc' })).map(flatRecord) })),
     createAccount: ctx => withUser(ctx, true, async user => {
       const body = ctx.request.body || {};
@@ -594,6 +668,11 @@ function makeActions(strapi) {
       if (input.date !== undefined) update.date = isoDate(input.date);
       if (input.categoryId !== undefined) update.category = (await relatedOwned(strapi, 'category', user.id, input.categoryId))?.id;
       if (input.status && ['paid','pending','planned'].includes(input.status)) update.status = input.status;
+      if (input.spendingContext !== undefined) {
+        if (previous.type !== 'expense') throw new errors.ValidationError('A classifica\u00E7\u00E3o de rotina ou extra s\u00F3 pode ser aplicada a despesas.');
+        if (!['routine','extra'].includes(input.spendingContext)) throw new errors.ValidationError('Classificação de despesa inválida.');
+        update.spendingContext = input.spendingContext;
+      }
       if (input.memo !== undefined) update.memo = String(input.memo).slice(0, 500);
       const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: update });
       await audit(strapi, user, 'update', 'transaction', item.id, previous, item);
@@ -924,4 +1003,4 @@ function makeActions(strapi) {
 
 async function seedPurchaseRemainder() { return null; }
 
-module.exports = { makeActions, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate };
+module.exports = { makeActions, buildNotifications, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate };

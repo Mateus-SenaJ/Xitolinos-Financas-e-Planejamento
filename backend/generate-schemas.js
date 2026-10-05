@@ -28,8 +28,9 @@ const types = [
     description: text(true, 120), normalizedMerchant: text(false, 120), type: enumeration(['income','expense','transfer']),
     amountCents: integer(true, 1), date: date(true), dueDate: date(false), purchaseDate: date(false), paidAt: date(false),
     method: enumeration(['account','pix','cash','debit','card','transfer'], 'account'),
-    status: enumeration(['paid','pending','planned','settled','voided'], 'paid'), source: enumeration(['manual','card','recurrence','import'], 'manual'),
+    status: enumeration(['paid','pending','planned','settled','voided'], 'paid'), source: enumeration(['manual','card','recurrence','import','shopping'], 'manual'),
     installmentGroup: text(false, 80), installmentNumber: integer(), installmentCount: integer(), memo: { type: 'text' }, deletedAt: { type: 'datetime' },
+    shoppingImportId: { ...text(false, 80), unique: true }, spendingContext: enumeration(['routine','extra']),
     legacyId: text(false, 120),
     account: relation('api::account.account'), counterpartyAccount: relation('api::account.account'), category: relation('api::category.category'),
     card: relation('api::card.card'), recurrence: relation('api::recurrence.recurrence'), incomeSource: relation('api::income-source.income-source'), ...owner
@@ -70,6 +71,9 @@ const types = [
   ['desired-purchase', 'desired_purchases', 'Compra desejada', {
     name: text(true, 90), amountCents: integer(true, 1), urgency: enumeration(['low','normal','high'], 'normal'), desiredDate: date(false),
     category: relation('api::category.category'), status: enumeration(['planned','purchased','cancelled'], 'planned'), ...owner
+  }],
+  ['shopping-state', 'shopping_states', 'Listas de compras', {
+    lists: { type: 'json', required: true, default: [] }, stock: { type: 'json', required: true, default: [] }, ...owner
   }],
   ['billing-subscription', 'billing_subscriptions', 'Assinatura Xitolinos', {
     provider: enumeration(['local','stripe'], 'local'), plan: text(true, 40), status: enumeration(['local','trialing','active','past_due','canceled','unpaid','incomplete','incomplete_expired','paused'], 'local'),

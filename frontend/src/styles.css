@@ -14,6 +14,12 @@
   --brand-outline: #dce9d7;
   --brand-label: #457b39;
   --on-dark: #f1f6ec;
+  --nav-active-start: #e9f5df;
+  --nav-active-end: #d2edb8;
+  --nav-active-ink: #1a1a1a;
+  --month-active-start: #214a28;
+  --month-active-end: #347b3d;
+  --month-active-ink: #ffffff;
 
   /* Texto e superfícies. */
   --canvas: #f4f7f2;
@@ -57,6 +63,12 @@
   --brand-outline: #3d5139;
   --brand-label: #b4d7a4;
   --on-dark: #f3f7ef;
+  --nav-active-start: #214a28;
+  --nav-active-end: #15371d;
+  --nav-active-ink: #f3f7ef;
+  --month-active-start: #214a28;
+  --month-active-end: #15371d;
+  --month-active-ink: #f3f7ef;
   --positive: #a1dc67;
   --positive-text: #a1dc67;
   --positive-surface: #263621;
@@ -174,7 +186,7 @@ img {
   min-height: 70px;
   align-items: center;
   gap: 12px;
-  margin: 19px 0 14px;
+  margin: 10px 0 2px;
   padding: 10px 12px;
   border: 1px solid #00000000;
   border-radius: 15px;
@@ -263,9 +275,11 @@ img {
   color: var(--ink);
 }
 .nav-link.active {
-  background: var(--brand-primary);
-  color: var(--brand-on-primary);
+  border: 1px solid var(--brand-border);
+  background: linear-gradient(115deg, var(--nav-active-start), var(--nav-active-end));
+  color: var(--nav-active-ink);
   font-weight: 700;
+  box-shadow: inset 0 1px 0 #ffffff4d;
 }
 .nav-link.active::before {
   content: none;
@@ -724,10 +738,14 @@ img {
   transform: translateY(-2px);
 }
 .month-card.selected {
-  border-color: var(--brand-label);
-  background: var(--brand-tint);
-  box-shadow: inset 0 0 0 1px var(--brand-secondary);
+  border-color: var(--brand-border);
+  background: linear-gradient(135deg, var(--month-active-start), var(--month-active-end));
+  color: var(--month-active-ink);
+  box-shadow: inset 0 0 0 1px #ffffff30, 0 8px 18px #15371d20;
 }
+.month-card.selected .month-card-head,
+.month-card.selected small,
+.month-card.selected .month-status { color: #f3f7ef; }
 .month-card.month-current:not(.selected) {
   border-color: var(--balance-line);
 }
@@ -879,6 +897,23 @@ img {
   min-height: 148px;
   padding: 21px 23px;
   border-radius: 18px;
+}
+.dashboard-summary .summary-card.balance-card,
+.dashboard-summary .summary-card.covered-card {
+  border-color: var(--brand-dark);
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-secondary));
+  color: #ffffff;
+}
+.dashboard-summary .summary-card.balance-card .summary-icon,
+.dashboard-summary .summary-card.covered-card .summary-icon {
+  background: #ffffff24;
+  color: #d9f4bb;
+}
+.dashboard-summary .summary-card.balance-card .summary-label,
+.dashboard-summary .summary-card.covered-card .summary-label,
+.dashboard-summary .summary-card.balance-card > small,
+.dashboard-summary .summary-card.covered-card > small {
+  color: #e8f3e1;
 }
 .dashboard-summary .summary-icon {
   position: absolute;

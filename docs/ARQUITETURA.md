@@ -26,6 +26,11 @@ O Electron abre a interface React e inicia os serviços locais. A instalação a
 
 Cada usuário autenticado é proprietário dos próprios registros. O perfil proprietário cria e altera informações; o perfil de consulta recebe respostas somente de leitura. A API aplica a autorização no servidor, não apenas ocultando controles da interface. Não há isolamento por escola ou organização.
 
+
+## Módulo de compras
+
+A versão React/Strapi armazena listas e estoque na coleção local `shopping_states`, com escopo pelo perfil autenticado. As transações podem guardar `spendingContext` (`routine`/`extra`) e a chave da lista contabilizada para evitar repetição em novas tentativas. O perfil de consulta não pode escrever pela API. A lista de compras e seu CSV permanecem locais; não há sincronização entre aparelhos. A implementação Android Kivy/SQLite ainda não consome essa coleção nem oferece paridade dessa funcionalidade.
+
 ## Migração local
 
 Na primeira inicialização, o backend pode importar `data/finance.sqlite` e `data/store.json`. A origem é aberta somente para leitura, a importação é identificada por um registro de migração e os arquivos originais permanecem no diretório. Backup e restauração usam JSON local, com mesclagem de registros.

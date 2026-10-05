@@ -51,13 +51,18 @@ export async function login(identifier, password) {
 }
 
 export async function parseStatement(file) {
-  if (file.name.toLocaleLowerCase('pt-BR').endsWith('.json')) {
+  const fileName = file.name.toLocaleLowerCase('pt-BR');
+  if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(fileName)) {
+    throw new Error('Extratos em imagem não podem ser lidos neste modo offline. O OCR local ainda não está disponível; use CSV ou PDF com texto selecionável.');
+  }
+  if (fileName.endsWith('.json')) {
     const parsed = JSON.parse(await file.text());
     return Array.isArray(parsed) ? parsed : parsed.rows || [];
   }
-  const text = file.type === 'application/pdf' || file.name.toLocaleLowerCase('pt-BR').endsWith('.pdf')
+  const text = file.type === 'application/pdf' || fileName.endsWith('.pdf')
     ? await readPdf(file)
     : await file.text();
+  if (!text.trim()) throw new Error('Nenhum texto foi encontrado. PDFs digitalizados como imagem exigem OCR local, que ainda não está disponível.');
   return parseStatementText(text);
 }
 

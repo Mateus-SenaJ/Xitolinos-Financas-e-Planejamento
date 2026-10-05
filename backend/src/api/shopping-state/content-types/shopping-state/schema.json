@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "shopping_states",
+  "info": {
+    "singularName": "shopping-state",
+    "pluralName": "shopping-states",
+    "displayName": "Listas de compras",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "lists": {
+      "type": "json",
+      "required": true,
+      "default": []
+    },
+    "stock": {
+      "type": "json",
+      "required": true,
+      "default": []
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

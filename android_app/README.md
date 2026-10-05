@@ -2,6 +2,9 @@
 
 Camada móvel Android construída em paralelo à aplicação web existente. O núcleo em `app/` não importa Kivy: regras, SQLite, repositories, serviços e testes podem ser reaproveitados por outra interface Python.
 
+
+> A implementação web atual inclui o módulo de compras e a classificação de despesas de rotina; esses recursos ainda não foram portados para Kivy/SQLite. Consulte [`docs/ANDROID_READINESS.md`](../docs/ANDROID_READINESS.md) para o contrato CSV e as pendências de paridade.
+
 ## Estado desta entrega
 
 Entregue como fundação Android/Fase 1: interface Kivy com cinco destinos, lançamento rápido de receita/despesa/transferência, contas, categorias iniciais, histórico, dashboard realizado, SQLite offline, saldo por conta, Lixeira lógica, auditoria, preferências de margem/horizonte e proteção local por PIN.

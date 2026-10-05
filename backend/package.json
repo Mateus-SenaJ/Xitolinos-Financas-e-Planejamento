@@ -7,7 +7,7 @@
     "develop": "npm run generate:schemas && node ../scripts/strapi-run.js develop",
     "start": "npm run generate:schemas && node ../scripts/strapi-run.js start",
     "build": "npm run generate:schemas && node ../scripts/strapi-run.js build",
-    "test": "node --test test"
+    "test": "node --test"
   },
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.56.0",
