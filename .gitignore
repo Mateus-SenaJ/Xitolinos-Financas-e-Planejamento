@@ -1,8 +1,12 @@
 node_modules/
 .env
 backend/.env
+backend/.strapi/
+backend/types/
 frontend/.env.local
 data/mysql/
+data/mysql-root-client.ini
+data/xitolinos-private-permissions
 data/finance.sqlite*
 data/store.json
 data/*.log
