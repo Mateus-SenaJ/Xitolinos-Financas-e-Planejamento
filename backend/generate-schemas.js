@@ -72,8 +72,8 @@ const types = [
     category: relation('api::category.category'), status: enumeration(['planned','purchased','cancelled'], 'planned'), ...owner
   }],
   ['billing-subscription', 'billing_subscriptions', 'Assinatura Xitolinos', {
-    provider: enumeration(['local','stripe'], 'local'), plan: text(true, 40), status: enumeration(['local','trialing','active','past_due','canceled'], 'local'),
-    customerId: text(false, 120), subscriptionId: text(false, 120), periodEnd: date(false), ...owner
+    provider: enumeration(['local','stripe'], 'local'), plan: text(true, 40), status: enumeration(['local','trialing','active','past_due','canceled','unpaid','incomplete','incomplete_expired','paused'], 'local'),
+    customerId: text(false, 120), subscriptionId: text(false, 120), checkoutAttemptId: text(false, 80), periodEnd: date(false), ...owner
   }],
   ['migration-state', 'migration_states', 'Controle de importação local', { key: text(true, 100), completedAt: { type: 'datetime' }, ...owner }],
   ['security-credential', 'security_credentials', 'Biometria deste dispositivo', {

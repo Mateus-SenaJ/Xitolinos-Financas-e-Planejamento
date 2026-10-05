@@ -22,6 +22,7 @@ module.exports = {
     ['GET', '/finance/security/registration/options', 'registrationOptions'], ['POST', '/finance/security/registration/verify', 'registrationVerify'],
     ['GET', '/finance/security/authentication/options', 'authenticationOptions'], ['POST', '/finance/security/authentication/verify', 'authenticationVerify'],
     ['POST', '/finance/security/credential/remove', 'removeSecurityCredential'],
-    ['GET', '/finance/billing', 'billingStatus'], ['POST', '/finance/billing/checkout', 'billingCheckout']
+    ['GET', '/finance/billing', 'billingStatus'], ['POST', '/finance/billing/checkout', 'billingCheckout'],
+    ['POST', '/finance/billing/portal', 'billingPortal'], ['POST', '/stripe/webhook', 'stripeWebhook']
   ].map(([method, path, action]) => ({ method, path, handler: `finance.${action}`, config: { auth: false } }))
 };

@@ -12,3 +12,4 @@ playwright-report/
 frontend/dist/
 backend/dist/
 *.pid
+debug.log

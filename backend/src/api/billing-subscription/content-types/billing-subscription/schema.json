@@ -32,7 +32,11 @@
         "trialing",
         "active",
         "past_due",
-        "canceled"
+        "canceled",
+        "unpaid",
+        "incomplete",
+        "incomplete_expired",
+        "paused"
       ],
       "default": "local"
     },
@@ -45,6 +49,11 @@
       "type": "string",
       "required": false,
       "maxLength": 120
+    },
+    "checkoutAttemptId": {
+      "type": "string",
+      "required": false,
+      "maxLength": 80
     },
     "periodEnd": {
       "type": "date",

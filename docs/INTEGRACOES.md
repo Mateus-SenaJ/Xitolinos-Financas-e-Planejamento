@@ -6,7 +6,9 @@ Strapi, MySQL, React e Electron operam dentro do dispositivo. A interface e a AP
 
 ## Stripe
 
-O SDK oficial e a criação de sessão de assinatura estão no backend. `BILLING_ENABLED=false`, e as chaves, preço e endereço de retorno ficam vazios em instalação local. Nenhuma conta Stripe, cartão de despesa ou dado pessoal financeiro é enviado. Para ativar cobrança no lançamento online, configure produto/preço no Stripe, endpoint de webhook assinado, origem HTTPS e atualização de assinatura no cadastro local do usuário. Webhook e cobrança não podem funcionar sem Internet.
+O backend mantém o Stripe isolado em `backend/src/integrations/stripe-billing.js`. Checkout cria uma assinatura recorrente e um Customer associado ao cadastro local; o portal permite gerenciar a assinatura. O webhook em `/api/stripe/webhook` valida a assinatura sobre o corpo HTTP original e atualiza estados de assinatura. `BILLING_ENABLED=false`, e as chaves, preço e endereço de retorno ficam vazios em instalação local. Nenhuma conta, cartão de despesa ou lançamento financeiro pessoal é enviado.
+
+A cobrança permanece desligada até existir uma versão online com HTTPS e endpoint público de webhook. Nessa implantação, configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` e `STRIPE_WEB_BASE_URL` no ambiente privado do backend, registre no Stripe os eventos `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_failed` e `invoice.payment_action_required`, e habilite o Customer Portal. Não ative `BILLING_ENABLED` na versão local, que fica vinculada ao loopback. O acesso ao aplicativo ainda não é bloqueado com base no status da assinatura; essa regra só deve ser definida junto com o lançamento online.
 
 ## Importação de documentos
 

@@ -22,6 +22,15 @@ export default function Settings({ data, billing, token, onRefresh, onToast, vie
     finally { setBusy(false); }
   }
 
+  async function openBilling(path) {
+    setBusy(true);
+    try {
+      const result = await api(path, { token, method: 'POST', body: '{}' });
+      location.assign(result.url);
+    } catch (error) { onToast(error.message); }
+    finally { setBusy(false); }
+  }
+
   function photo(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -79,7 +88,20 @@ export default function Settings({ data, billing, token, onRefresh, onToast, vie
     </div>
     <BiometricSettings token={token} viewer={viewer} onToast={onToast}/>
     <section className="surface data-tools"><div className="section-head"><div><span className="eyebrow">SEUS ARQUIVOS</span><h2>Compartilhar e guardar</h2><p>Transfira seus arquivos para outro aparelho quando estiverem lado a lado.</p></div></div><div className="data-tool-actions"><button className="button button-quiet" onClick={() => exportFile('text')} disabled={busy}><Icon name="download"/>Exportar {monthLabel(data.month)}</button><button className="button button-primary" onClick={() => exportFile('backup')} disabled={busy}><Icon name="download"/>Baixar backup dos dados</button>{!viewer && <label className="button button-quiet"><Icon name="import"/>Restaurar em outro aparelho<input type="file" accept="application/json,.json" onChange={restoreFile} disabled={busy}/></label>}</div><p className="muted">Sem rede entre os aparelhos, a transferência é manual pelo arquivo de backup. O app adiciona itens que faltam e preserva os registros que já existem.</p></section>
-    <section className="surface billing-panel"><span className="billing-mark">X</span><div><span className="eyebrow">ASSINATURA DO APLICATIVO</span><h2>{billing?.mode === 'local' ? 'Plano local ativo' : 'Stripe preparado'}</h2><p>{billing?.message || 'Cobranças de assinatura estão desligadas no modo offline.'}</p><small>O Stripe ficará restrito à assinatura do aplicativo; cartões e despesas pessoais nunca são enviados a ele.</small></div><button className="button button-quiet" disabled={!billing?.checkoutReady || busy} title={!billing?.checkoutReady ? 'Disponível quando a versão online estiver configurada.' : 'Gerenciar assinatura'} onClick={async () => { try { const result = await api('/finance/billing/checkout', { token, method: 'POST', body: '{}' }); location.href = result.url; } catch (error) { onToast(error.message); } }}>Ver assinatura</button></section>
+        <section className="surface billing-panel">
+      <span className="billing-mark">X</span>
+      <div>
+        <span className="eyebrow">ASSINATURA DO APLICATIVO</span>
+        <h2>{billing?.mode === 'local' ? 'Plano local ativo' : billing?.subscription?.status === 'active' ? 'Assinatura ativa' : 'Assinatura do aplicativo'}</h2>
+        <p>{billing?.message || 'Cobran\u00e7as de assinatura est\u00e3o desligadas no modo offline.'}</p>
+        <small>{'O Stripe fica restrito \u00e0 assinatura do aplicativo; cart\u00f5es e despesas pessoais nunca s\u00e3o enviados a ele.'}</small>
+      </div>
+      <div className="billing-actions">
+        {billing?.checkoutReady && <button className="button button-primary" onClick={() => openBilling('/finance/billing/checkout')} disabled={busy}>Assinar</button>}
+        {billing?.manageReady && <button className="button button-quiet" onClick={() => openBilling('/finance/billing/portal')} disabled={busy}>Gerenciar assinatura</button>}
+        {!billing?.checkoutReady && !billing?.manageReady && <button className="button button-quiet" disabled title={'Dispon\u00edvel quando a vers\u00e3o online estiver configurada.'}>Assinatura online indispon\u00edvel</button>}
+      </div>
+    </section>
     <section className="local-storage-note"><span className="local-indicator"/><strong>Este aplicativo está configurado para uso local</strong><span>Sem serviços em nuvem ou envio de dados financeiros.</span></section>
   </>;
 }

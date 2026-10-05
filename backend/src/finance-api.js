@@ -2,7 +2,7 @@
 
 const { errors } = require('@strapi/utils');
 const crypto = require('node:crypto');
-const Stripe = require('stripe');
+const stripeBilling = require('./integrations/stripe-billing');
 const { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 const {
   validMonth, monthKey, monthDate, shiftMonth, normalizeMerchant, installments,
@@ -903,22 +903,22 @@ function makeActions(strapi) {
     }) })),
     billingStatus: ctx => withUser(ctx, false, async user => {
       const subscription = (await ownedRows(strapi, 'billing-subscription', user.id))[0] || { provider: 'local', plan: 'local', status: 'local' };
-      return { mode: process.env.BILLING_ENABLED === 'true' ? 'stripe-prepared' : 'local', online: false,
-        checkoutReady: process.env.BILLING_ENABLED === 'true' && Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID),
-        subscription: { plan: subscription.plan, status: subscription.status }, message: 'O uso financeiro continua local. A cobrança Stripe só será habilitada quando o produto entrar online.' };
+      const stripeEnabled = process.env.BILLING_ENABLED === 'true';
+      return {
+        mode: stripeEnabled ? 'stripe' : 'local',
+        checkoutReady: stripeBilling.isConfigured() && (!subscription.subscriptionId || ['canceled', 'incomplete_expired'].includes(subscription.status)),
+        manageReady: stripeBilling.isConfigured({ requirePrice: false }) && Boolean(subscription.customerId),
+        subscription: { plan: subscription.plan, status: subscription.status },
+        message: !stripeEnabled
+          ? 'A cobrança fica desligada no modo local e offline.'
+          : stripeBilling.isConfigured()
+            ? 'A assinatura é gerenciada separadamente dos seus dados financeiros locais.'
+            : 'A configuração da assinatura ainda não foi concluída.'
+      };
     }),
-    billingCheckout: ctx => withUser(ctx, true, async user => {
-      if (process.env.BILLING_ENABLED !== 'true') throw new errors.ValidationError('A cobrança por assinatura está desativada enquanto o Xitolinos roda localmente.');
-      if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID || !process.env.STRIPE_WEB_BASE_URL) throw new errors.ValidationError('Configure STRIPE_SECRET_KEY, STRIPE_PRICE_ID e STRIPE_WEB_BASE_URL no ambiente do servidor.');
-      const client = new Stripe(process.env.STRIPE_SECRET_KEY);
-      const session = await client.checkout.sessions.create({
-        mode: 'subscription', line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-        customer_email: user.email, client_reference_id: String(user.id),
-        success_url: `${process.env.STRIPE_WEB_BASE_URL}/?billing=success`, cancel_url: `${process.env.STRIPE_WEB_BASE_URL}/?billing=cancelled`,
-        metadata: { userId: String(user.id), product: 'xitolinos-planejamento' }
-      });
-      return { url: session.url };
-    })
+    billingCheckout: ctx => withUser(ctx, true, user => stripeBilling.createCheckout(strapi, user)),
+    billingPortal: ctx => withUser(ctx, true, user => stripeBilling.createPortalSession(strapi, user)),
+    stripeWebhook: ctx => stripeBilling.handleWebhook(strapi, ctx)
   };
 }
 

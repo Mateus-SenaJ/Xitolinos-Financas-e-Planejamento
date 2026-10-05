@@ -39,8 +39,8 @@
   --balance-surface: #f4faee;
   --balance-line: #b6d39f;
   --chart-expense: #d9d9d9;
-  --focus-color: rgba(88, 171, 47, 0.38);
-  --shadow: 0 14px 40px rgba(33, 53, 35, 0.07);
+  --focus-color: #58ab2f61;
+  --shadow: 0 14px 40px #21352312;
 }
 
 :root[data-theme="dark"] {
@@ -64,13 +64,13 @@
   --balance-surface: #1e2b1e;
   --balance-line: #3b5938;
   --chart-expense: #68736a;
-  --focus-color: rgba(161, 220, 103, 0.55);
+  --focus-color: #a1dc678c;
   --attention-surface: #332d19;
   --attention-line: #7a6830;
   --attention-text: #f4d03f;
   --attention-chip: #4a3f1e;
   --attention-deep: #f4d03f;
-  --shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+  --shadow: 0 14px 40px #00000038;
 }
 
 /* Base and accessibility. */
@@ -176,7 +176,7 @@ img {
   gap: 12px;
   margin: 19px 0 14px;
   padding: 10px 12px;
-  border: 1px solid transparent;
+  border: 1px solid #00000000;
   border-radius: 15px;
   background: var(--surface-muted);
   color: var(--ink);
@@ -251,7 +251,7 @@ img {
   padding: 0 13px;
   border: 0;
   border-radius: 11px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
   text-align: left;
@@ -343,7 +343,7 @@ img {
   place-items: center;
   border: 0;
   border-radius: 8px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
 }
@@ -362,7 +362,7 @@ img {
   gap: 22px;
   padding: 0 38px;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  background: color-mix(in srgb, var(--surface) 94%, #00000000);
   backdrop-filter: blur(15px);
 }
 .global-search {
@@ -372,7 +372,7 @@ img {
   align-items: center;
   gap: 11px;
   padding: 0 15px;
-  border: 1px solid transparent;
+  border: 1px solid #00000000;
   border-radius: 15px;
   background: var(--surface-muted);
   color: var(--muted);
@@ -391,7 +391,7 @@ img {
   min-width: 0;
   border: 0;
   outline: 0;
-  background: transparent;
+  background: #00000000;
   color: var(--ink);
   font-size: 12px;
 }
@@ -407,7 +407,7 @@ img {
   place-items: center;
   border: 0;
   border-radius: 7px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
 }
@@ -451,7 +451,7 @@ img {
   height: 7px;
   border-radius: 50%;
   background: var(--brand-secondary);
-  box-shadow: 0 0 0 3px rgba(88, 171, 47, 0.12);
+  box-shadow: 0 0 0 3px #58ab2f1f;
 }
 .icon-button {
   display: grid;
@@ -459,9 +459,9 @@ img {
   height: 34px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid transparent;
+  border: 1px solid #00000000;
   border-radius: 9px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
 }
@@ -489,7 +489,7 @@ img {
   gap: 9px;
   padding: 0;
   border: 0;
-  background: transparent;
+  background: #00000000;
   cursor: pointer;
   font-size: 11px;
   font-weight: 600;
@@ -554,7 +554,7 @@ img {
   justify-content: center;
   gap: 8px;
   padding: 0 13px;
-  border: 1px solid transparent;
+  border: 1px solid #00000000;
   border-radius: 8px;
   cursor: pointer;
   font-size: 11px;
@@ -568,7 +568,7 @@ img {
   border-color: var(--brand-border);
   background: var(--ui-green, var(--brand-secondary));
   color: var(--brand-on-primary);
-  box-shadow: 0 3px 10px rgba(44, 100, 35, 0.14);
+  box-shadow: 0 3px 10px #2c642324;
 }
 .button-primary:hover {
   filter: brightness(0.95);
@@ -593,7 +593,7 @@ img {
 .button-text {
   min-height: 31px;
   padding: 0;
-  background: transparent;
+  background: #00000000;
   color: var(--brand-forest);
   font-size: 10px;
 }
@@ -615,12 +615,12 @@ img {
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 0;
-  background: transparent;
+  background: #00000000;
   color: var(--brand-forest);
 }
 .button-outline {
   border-color: #91be71;
-  background: transparent;
+  background: #00000000;
   color: var(--on-dark);
 }
 .button-wide {
@@ -680,7 +680,7 @@ img {
   place-items: center;
   align-self: center;
   border: 0;
-  background: transparent;
+  background: #00000000;
   color: #6e7e6a;
   cursor: pointer;
   font-size: 29px;
@@ -700,7 +700,7 @@ img {
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
-  scrollbar-color: #cfd9c9 transparent;
+  scrollbar-color: #cfd9c9 #00000000;
 }
 .month-card {
   display: flex;
@@ -1056,7 +1056,7 @@ img {
   display: grid;
   min-height: 42px;
   place-items: center;
-  border: 1px solid transparent;
+  border: 1px solid #00000000;
   border-radius: 11px;
   background: var(--surface-muted);
   color: var(--ink);
@@ -1305,7 +1305,7 @@ img {
   place-items: center;
   border: 0;
   border-radius: 5px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
   font-size: 17px;
@@ -1412,10 +1412,10 @@ img {
   border: 1px solid #1d4325;
   border-radius: 11px;
   background:
-    radial-gradient(ellipse at 100% 0%, #37702c 0, transparent 53%),
+    radial-gradient(ellipse at 100% 0%, #37702c 0, #00000000 53%),
     linear-gradient(140deg, #183720, #102419);
   color: #fafcf7;
-  box-shadow: 0 12px 25px rgba(23, 55, 27, 0.13);
+  box-shadow: 0 12px 25px #17371b21;
 }
 .invoice-card-head {
   display: flex;
@@ -1433,7 +1433,7 @@ img {
 .invoice-more {
   margin: -6px -5px 0 auto;
   border: 0;
-  background: transparent;
+  background: #00000000;
   color: #bddcac;
   cursor: pointer;
   font-size: 18px;
@@ -2011,7 +2011,7 @@ img {
 }
 .currency-input:focus-within {
   border-color: var(--brand-label);
-  box-shadow: 0 0 0 3px rgba(88, 171, 47, 0.13);
+  box-shadow: 0 0 0 3px #58ab2f21;
 }
 .currency-input b {
   padding-left: 11px;
@@ -2021,7 +2021,7 @@ img {
 .currency-input input {
   min-height: 38px;
   border: 0;
-  background: transparent;
+  background: #00000000;
   box-shadow: none !important;
 }
 .advice-result {
@@ -2279,6 +2279,12 @@ img {
 .billing-panel > div {
   flex: 1;
 }
+.billing-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .billing-panel h2 {
   margin: 3px 0;
   font-family: Manrope, Inter, sans-serif;
@@ -2338,7 +2344,7 @@ img {
   min-width: 0;
   border: 0;
   outline: 0;
-  background: transparent;
+  background: #00000000;
   color: var(--ink);
   font-size: 9px;
 }
@@ -2357,7 +2363,7 @@ img {
   border-radius: 15px;
   background: var(--ui-green, var(--brand-secondary));
   color: var(--brand-on-primary);
-  box-shadow: 0 9px 23px rgba(42, 83, 31, 0.23);
+  box-shadow: 0 9px 23px #2a531f3b;
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -2391,7 +2397,7 @@ img {
   place-items: center;
   border: 0;
   border-radius: 6px;
-  background: transparent;
+  background: #00000000;
   color: var(--muted);
   cursor: pointer;
 }
@@ -2528,7 +2534,7 @@ img {
   gap: 25px;
   padding: 25px;
   background:
-    radial-gradient(ellipse at 90% 0%, var(--positive-soft), transparent 35%),
+    radial-gradient(ellipse at 90% 0%, var(--positive-soft), #00000000 35%),
     var(--canvas);
 }
 .unlock-brand {
@@ -2615,7 +2621,7 @@ img {
   place-items: center;
   padding: 20px;
   overflow: auto;
-  background: rgba(14, 22, 14, 0.56);
+  background: #0e160e8f;
   backdrop-filter: blur(4px);
 }
 .modal-card {
@@ -2677,7 +2683,7 @@ img {
   padding: 39px 7%;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 88% 4%, #b8e58b, transparent 36%),
+    radial-gradient(ellipse at 88% 4%, #b8e58b, #00000000 36%),
     linear-gradient(145deg, #58ab2f, #26772e 56%, #15371d);
   color: #f9fcf6;
 }
@@ -2947,7 +2953,7 @@ img {
     justify-content: space-between;
     padding: 0 14px;
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--surface) 93%, transparent);
+    background: color-mix(in srgb, var(--surface) 93%, #00000000);
     backdrop-filter: blur(15px);
   }
   .mobile-top .brand-lockup {
@@ -2963,7 +2969,7 @@ img {
     inset: 0;
     display: block;
     border: 0;
-    background: rgba(12, 18, 13, 0.45);
+    background: #0c120d73;
   }
   .page-content {
     padding: 22px 14px 28px;
@@ -3407,7 +3413,7 @@ img {
     gap: 0;
     padding: 0;
     overflow: hidden;
-    color: transparent;
+    color: #00000000;
     font-size: 0;
   }
   .brand-strip .button svg {
@@ -3500,7 +3506,7 @@ img {
     flex-wrap: wrap;
     padding: 13px;
   }
-  .billing-panel .button {
+  .billing-actions {
     margin-left: 53px;
   }
   .data-tools {
@@ -3538,7 +3544,7 @@ img {
     min-height: 100svh;
     padding: 35px 25px;
     background:
-      radial-gradient(ellipse at 92% 0%, var(--positive-soft), transparent 34%),
+      radial-gradient(ellipse at 92% 0%, var(--positive-soft), #00000000 34%),
       var(--surface);
   }
   .login-panel > footer {
@@ -3590,13 +3596,13 @@ img {
     --balance-surface: #1e2b1e;
     --balance-line: #3b5938;
     --chart-expense: #68736a;
-    --focus-color: rgba(161, 220, 103, 0.55);
+    --focus-color: #a1dc678c;
     --attention-surface: #332d19;
     --attention-line: #7a6830;
     --attention-text: #f4d03f;
     --attention-chip: #4a3f1e;
     --attention-deep: #f4d03f;
-    --shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+    --shadow: 0 14px 40px #00000038;
   }
   :root[data-theme="system"] .brand-logo-on-light {
     display: none;

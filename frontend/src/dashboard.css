@@ -282,7 +282,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 20px 55px rgba(19, 35, 18, 0.2);
+  box-shadow: 0 20px 55px #13231233;
 }
 .notification-head {
   display: flex;
@@ -310,7 +310,7 @@
   padding: 10px 2px;
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: transparent;
+  background: #00000000;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
@@ -446,7 +446,7 @@
     justify-content: space-around;
     padding: 5px 7px calc(5px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--surface) 95%, transparent);
+    background: color-mix(in srgb, var(--surface) 95%, #00000000);
     backdrop-filter: blur(15px);
   }
   .mobile-bottom-nav > button {
@@ -456,7 +456,7 @@
     gap: 3px;
     padding: 4px 5px;
     border: 0;
-    background: transparent;
+    background: #00000000;
     color: var(--muted);
     cursor: pointer;
   }
@@ -475,6 +475,6 @@
     border-radius: 50%;
     background: var(--brand-primary);
     color: #18351b;
-    box-shadow: 0 6px 17px rgba(62, 112, 38, 0.2);
+    box-shadow: 0 6px 17px #3e702633;
   }
 }
