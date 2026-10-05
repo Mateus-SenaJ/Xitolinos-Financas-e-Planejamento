@@ -61,7 +61,7 @@ if (-not (Test-Path -LiteralPath $envPath)) {
     "JWT_SECRET=$jwtSecret", 'DATABASE_CLIENT=mysql', 'DATABASE_HOST=127.0.0.1', "DATABASE_PORT=$port",
     'DATABASE_NAME=xitolinos_financas', 'DATABASE_USERNAME=xitolinos', "DATABASE_PASSWORD=$databasePassword", "MYSQL_ROOT_PASSWORD=$rootPassword",
     'DATABASE_SSL=false', 'DEMO_USER_PASSWORD=Xitolinos-Demo-2026!', 'BILLING_ENABLED=false',
-    'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'STRIPE_PRICE_ID='
+    'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'STRIPE_PRICE_ID=', 'STRIPE_WEB_BASE_URL='
   ) | Set-Content -LiteralPath $envPath -Encoding utf8
   if (-not $DataRoot) { @("DATABASE_PASSWORD=$databasePassword", "MYSQL_ROOT_PASSWORD=$rootPassword") | Set-Content -LiteralPath (Join-Path $projectRoot '.env') -Encoding utf8 }
 }
