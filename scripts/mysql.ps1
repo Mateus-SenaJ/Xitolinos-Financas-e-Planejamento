@@ -72,7 +72,8 @@ foreach ($line in Get-Content -LiteralPath $envPath) {
 $databasePassword = $environment['DATABASE_PASSWORD']
 $rootPassword = $environment['MYSQL_ROOT_PASSWORD']
 if ($databasePassword -notmatch '^[a-f0-9]{64}$' -or $rootPassword -notmatch '^[a-f0-9]{64}$') { throw 'As senhas MySQL em backend\.env estão incompletas. Preserve o arquivo e corrija apenas as chaves DATABASE_PASSWORD e MYSQL_ROOT_PASSWORD.' }
-$permissionMarker = Join-Path $dataDir 'xitolinos-private-permissions'
+$controlDir = Join-Path $runtimeRoot 'data'
+$permissionMarker = Join-Path $controlDir 'xitolinos-private-permissions'
 if (-not (Test-Path -LiteralPath $permissionMarker)) {
   Set-Content -LiteralPath $permissionMarker -Value 'private' -Encoding ascii
   Set-PrivateAccess $permissionMarker
@@ -84,7 +85,7 @@ foreach ($secretFile in $secretFiles) {
     Set-PrivateAccess $secretFile
   }
 }
-$clientOptionsPath = Join-Path $dataDir 'root-client.ini'
+$clientOptionsPath = Join-Path $controlDir 'mysql-root-client.ini'
 if (Test-Path -LiteralPath $clientOptionsPath) {
   Set-PrivateAccess $clientOptionsPath
 }

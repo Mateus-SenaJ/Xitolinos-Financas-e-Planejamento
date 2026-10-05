@@ -1,0 +1,7 @@
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/AGENTS.md"
+      - files: ".agents/skills/xitolinos-reference-review/SKILL.md"
+        applyTo: "frontend/src/**/*.{js,jsx,css}"

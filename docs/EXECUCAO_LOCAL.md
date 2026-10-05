@@ -15,7 +15,7 @@ No PowerShell, na raiz do projeto:
 
 ```powershell
 corepack yarn install
-npm run dev
+corepack yarn dev
 ```
 
 Na primeira inicialização, o script gera senhas aleatórias locais, cria uma instância MySQL isolada em `127.0.0.1:3307` e mantém seus arquivos em `data/mysql`. Strapi atende somente em `127.0.0.1:1337`; Vite atende somente em `127.0.0.1:5173`.
@@ -25,12 +25,12 @@ O cache nativo do Strapi fica em `%USERPROFILE%\.cache\xitolinos-swc`. Ele é cr
 O Electron de desenvolvimento inicia os mesmos serviços automaticamente:
 
 ```powershell
-npm run desktop
+corepack yarn desktop
 ```
 
-Use `npm run dev` e `npm run desktop` em sessões separadas somente se precisar de ambos. O produto instalado inicia e encerra os serviços locais junto com a janela. O MySQL do instalador e as senhas ficam em `%LOCALAPPDATA%\Xitolinos Planejamento`.
+Use `corepack yarn dev` e `corepack yarn desktop` em sessões separadas somente se precisar de ambos. O produto instalado inicia e encerra os serviços locais junto com a janela. O MySQL do instalador e as senhas ficam em `%LOCALAPPDATA%\Xitolinos Planejamento`.
 
-Para encerrar o MySQL manualmente durante o desenvolvimento, use `npm run db:stop`. Os dados são mantidos ao parar e reiniciar o servidor. A instância não compartilha nem modifica outro MySQL já ativo em 3307.
+Para encerrar o MySQL manualmente durante o desenvolvimento, use `corepack yarn db:stop`. Os dados são mantidos ao parar e reiniciar o servidor. A instância não compartilha nem modifica outro MySQL já ativo em 3307.
 
 ## Acesso de demonstração
 
@@ -46,13 +46,13 @@ O perfil proprietário pode criar e alterar dados. O perfil de consulta não alt
 Desenvolvimento:
 
 ```powershell
-npm run desktop
+corepack yarn desktop
 ```
 
 Instalador Windows:
 
 ```powershell
-npm run desktop:package
+corepack yarn desktop:package
 ```
 
 O instalador coloca as aplicações em recursos locais, inclui o runtime Node atual usado para a API e guarda banco, senhas e arquivos de log em uma pasta local do perfil Windows. MySQL Server 8.4 precisa estar instalado no computador de destino.
@@ -72,9 +72,9 @@ Enquanto os aparelhos não tiverem rede entre si, use **Definições → Compart
 ## Verificações
 
 ```powershell
-npm test
-npm run test:e2e
-npm run desktop:package
+corepack yarn test
+corepack yarn test:e2e
+corepack yarn desktop:package
 ```
 
 O teste de jornada usa as contas de demonstração. Registros temporários são marcados como removidos ao concluir o teste; os cadastros iniciais do demonstrativo são mantidos.

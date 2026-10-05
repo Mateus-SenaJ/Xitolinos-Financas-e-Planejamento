@@ -16,7 +16,7 @@
     "db:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Start",
     "db:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Status",
     "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mysql.ps1 -Action Stop",
-    "test:unit": "node --test test backend/test",
+    "test:unit": "node --test test/finance-service.test.js test/ledger.test.js test/money.test.js test/request-policy.test.js backend/test/finance-engine.test.js",
     "test:web": "npm --workspace frontend run test",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:web"

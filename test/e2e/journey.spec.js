@@ -4,12 +4,12 @@ async function loginAsOwner(page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
   await page.getByRole('button', { name: 'Continuar para o aplicativo' }).click();
-  await expect(page.getByRole('heading', { name: 'Seu plano financeiro' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Olá, demo-xitolinos\./ })).toBeVisible();
 }
 
 test('proprietário consulta módulos, cria e remove um lançamento local', async ({ page }) => {
   await loginAsOwner(page);
-  await expect(page.getByRole('heading', { name: 'Despesas contabilizadas' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Extrato recente' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Meses do planejamento' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Previsão de caixa' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Agenda financeira' })).toBeVisible();
@@ -17,8 +17,9 @@ test('proprietário consulta módulos, cria e remove um lançamento local', asyn
   await expect(page.getByRole('heading', { name: 'Posso pedir delivery?' })).toBeVisible();
 
   for (const [navigation, heading] of [
-    ['Planejamento', 'Planejamento'], ['Reservas', 'Reservas e investimentos'], ['Metas', 'Metas financeiras'],
-    ['Importar extrato', 'Importar extrato'], ['Posso gastar?', 'Posso fazer esse gasto?'], ['Definições', 'Definições']
+    ['Fluxo de caixa', 'Fluxo de caixa'], ['Transações', 'Transações'], ['Calendário', 'Calendário financeiro'],
+    ['Cartões e faturas', 'Cartões e faturas'], ['Planejamento', 'Planejamento'], ['Reservas', 'Reservas e investimentos'],
+    ['Metas', 'Metas financeiras'], ['Importar extrato', 'Importar extrato'], ['Dúvidas', 'Posso fazer esse gasto?'], ['Definições', 'Definições']
   ]) {
     await page.getByRole('button', { name: navigation, exact: true }).click();
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
@@ -44,7 +45,7 @@ test('perfil de consulta não recebe controles que alteram dados', async ({ page
   await page.getByLabel('Senha').fill('Xitolinos-Demo-2026!');
   await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
   await page.getByRole('button', { name: 'Continuar para o aplicativo' }).click();
-  await expect(page.getByRole('heading', { name: 'Seu plano financeiro' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Olá, consulta-xitolinos\./ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Adicionar despesa' })).toHaveCount(0);
   await expect(page.getByText('Acesso para consulta')).toBeVisible();
 });
@@ -53,11 +54,11 @@ for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 
   test(`painel acessível e navegável em ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await loginAsOwner(page);
-    await expect(page.getByRole('heading', { name: 'Seu plano financeiro' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Olá, demo-xitolinos\./ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Adicionar despesa' }).last()).toBeVisible();
     if (viewport.width < 700) {
       await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('button', { name: 'Extrato' }).click();
-      await expect(page.getByRole('heading', { name: 'Despesas e rendas' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Transações' })).toBeVisible();
     }
     await page.screenshot({ path: `test-results/layout-${viewport.width}.png`, fullPage: true });
   });

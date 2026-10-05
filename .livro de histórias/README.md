@@ -6,7 +6,7 @@ Este diretório registra decisões e o histórico do produto para que mudanças 
 
 - O produto é Xitolinos Planejamento Financeiro Pessoal. Não usa escolas nem isolamento por escola.
 - API em Strapi e JavaScript, com MySQL persistente no próprio computador.
-- Interface em React e JavaScript. O React segue `.agents/skills/manter-render-inline/SKILL.md`.
+- Interface em React e JavaScript. O React segue `.agents/skills/xitolinos-reference-review/SKILL.md`.
 - Primeira versão sem dependência de rede externa. A comunicação entre interface e API usa somente `127.0.0.1`.
 - O instalador Electron salva banco, senhas e arquivos de auditoria no perfil local do Windows.
 - A base SQLite existente é a origem da importação inicial e continua preservada após a migração.

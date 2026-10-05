@@ -19,7 +19,7 @@ Painel e linha do tempo mensal; despesas, rendas e parcelamentos; cartões e fec
 
 ## Identidade e código React
 
-A interface usa o manual visual Xitolinos e funciona sem fontes externas. Componentes React seguem a orientação do projeto em [`.agents/skills/manter-render-inline/SKILL.md`](.agents/skills/manter-render-inline/SKILL.md).
+A interface usa o manual visual Xitolinos e funciona sem fontes externas. Componentes React seguem a orientação do projeto em [`.agents/skills/xitolinos-reference-review/SKILL.md`](.agents/skills/xitolinos-reference-review/SKILL.md).
 
 ## Mais informações
 
