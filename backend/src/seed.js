@@ -100,9 +100,11 @@ async function seedUser(strapi, user) {
 async function seedDemoData(strapi) {
   const role = await strapi.db.query('plugin::users-permissions.role').findOne({ where: { type: 'authenticated' } });
   const service = strapi.plugin('users-permissions').service('user');
+  let demoOwner;
+  let demoShoppingViewer;
   const demoUsers = [
     { username: 'demo-xitolinos', email: 'demo@xitolinos.local', profile: 'owner' },
-    { username: 'consulta-xitolinos', email: 'consulta@xitolinos.local', profile: 'viewer' }
+    { username: 'consulta-xitolinos', email: 'consulta@xitolinos.local', profile: 'shopping_viewer' }
   ];
   for (const item of demoUsers) {
     let user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: item.email } });
@@ -110,8 +112,15 @@ async function seedDemoData(strapi) {
       ...item, password: process.env.DEMO_USER_PASSWORD || 'Xitolinos-Demo-2026!', provider: 'local', confirmed: true, blocked: false, role: role.id
     });
     if (user.profile !== item.profile) await strapi.db.query('plugin::users-permissions.user').update({ where: { id: user.id }, data: { profile: item.profile } });
-    await seedUser(strapi, user);
+    if (item.profile === 'owner') await seedUser(strapi, user);
+    if (item.profile === 'owner') demoOwner = user;
+    if (item.profile === 'shopping_viewer') demoShoppingViewer = user;
   }
+  if (!demoOwner || !demoShoppingViewer) return;
+  const shoppingStates = await rows(strapi, 'shopping-state', demoOwner.id);
+  const sharedViewerIds = [...new Set([...(shoppingStates[0]?.sharedViewerIds || []).map(String), String(demoShoppingViewer.id)])];
+  if (shoppingStates.length) await strapi.entityService.update(uid('shopping-state'), shoppingStates[0].id, { data: { sharedViewerIds } });
+  else await strapi.entityService.create(uid('shopping-state'), { data: { lists: [], stock: [], sharedViewerIds, owner: demoOwner.id } });
 }
 
 module.exports = { seedDemoData, demoTransactions };

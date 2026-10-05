@@ -39,6 +39,8 @@ Para encerrar o MySQL manualmente durante o desenvolvimento, use `corepack yarn 
 | Proprietário | `demo@xitolinos.local` | `Xitolinos-Demo-2026!` |
 | Consulta | `consulta@xitolinos.local` | `Xitolinos-Demo-2026!` |
 
+A conta de consulta só pode visualizar a lista de compras compartilhada pelo perfil proprietário. A API bloqueia o painel financeiro e qualquer alteração feita por essa conta.
+
 O perfil proprietário pode criar e alterar dados. O perfil de consulta não altera registros. Troque a senha inicial antes de usar a aplicação para dados pessoais.
 
 ## Desktop Electron

@@ -12,6 +12,15 @@ const {
 
 const uid = name => `api::${name}.${name}`;
 const populate = '*';
+const isSharedShoppingViewer = (state, user) => user.profile === 'shopping_viewer'
+  && (state.sharedViewerIds || []).some(id => String(id) === String(user.id));
+function assertFinanceAccess(user, ctx, write) {
+  if (user.profile === 'shopping_viewer' && !(ctx.method === 'GET' && ctx.path === '/api/finance/shopping')) {
+    throw new errors.ForbiddenError('Este perfil s\u00F3 pode consultar a lista de compras compartilhada.');
+  }
+  if (write && user.profile !== 'owner') throw new errors.ForbiddenError('Este perfil pode consultar os dados, mas n\u00E3o pode alter\u00E1-los.');
+}
+
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 const money = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
 
@@ -79,7 +88,7 @@ async function currentUser(strapi, ctx, write = false, sensitiveRead = false) {
   catch { throw new errors.UnauthorizedError('Sua sessão expirou. Entre novamente.'); }
   const user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { id: payload.id } });
   if (!user || user.blocked) throw new errors.UnauthorizedError('Conta indisponível.');
-  if (write && user.profile !== 'owner') throw new errors.ForbiddenError('Este perfil pode consultar os dados, mas não pode alterá-los.');
+  assertFinanceAccess(user, ctx, write);
   if (write || sensitiveRead) await verifySensitiveProof(strapi, ctx, user);
   ctx.state.user = user;
   return user;
@@ -588,6 +597,12 @@ function makeActions(strapi) {
     }),
     dashboard: ctx => withUser(ctx, false, async user => ({ ...(await dashboardData(strapi, user.id, ctx.query.month)), profile: { username: user.username, email: user.email, profile: user.profile } })),
     shoppingState: ctx => withUser(ctx, false, async user => {
+      if (user.profile === 'shopping_viewer') {
+        const states = await strapi.entityService.findMany(uid('shopping-state'), { populate, limit: 10000 });
+        const shared = states.find(row => isSharedShoppingViewer(row, user));
+        if (!shared) throw new errors.ForbiddenError('O perfil ainda n\u00E3o recebeu acesso a uma lista.');
+        return { lists: shared.lists || [], stock: shared.stock || [] };
+      }
       const row = (await ownedRows(strapi, 'shopping-state', user.id))[0];
       return { lists: row?.lists || [], stock: row?.stock || [] };
     }),
@@ -596,7 +611,7 @@ function makeActions(strapi) {
       let board;
       try { board = normalizeShoppingBoard(ctx.request.body || {}, current || {}); }
       catch (error) { throw new errors.ValidationError(error.message); }
-      const data = { lists: board.lists, stock: board.stock, owner: user.id };
+      const data = { lists: board.lists, stock: board.stock, sharedViewerIds: current?.sharedViewerIds || [], owner: user.id };
       const row = current
         ? await strapi.entityService.update(uid('shopping-state'), current.id, { data })
         : await strapi.entityService.create(uid('shopping-state'), { data });
@@ -1003,4 +1018,4 @@ function makeActions(strapi) {
 
 async function seedPurchaseRemainder() { return null; }
 
-module.exports = { makeActions, buildNotifications, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate };
+module.exports = { makeActions, buildNotifications, assertFinanceAccess, isSharedShoppingViewer, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate };

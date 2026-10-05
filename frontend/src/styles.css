@@ -3668,3 +3668,11 @@ img {
     max-width: 33vw;
   }
 }
+
+
+.shopping-only .sidebar-tip,
+.shopping-only .main-topbar,
+.shopping-only .mobile-bottom-nav { display: none; }
+.shopping-only .mobile-top > button:not(:first-child) { display: none; }
+.shopping-only .shopping-scope-note { margin: 0.5rem 0 0; color: var(--text-muted); font-size: 0.875rem; }
+.shopping-only .sidebar-profile { cursor: default; }
