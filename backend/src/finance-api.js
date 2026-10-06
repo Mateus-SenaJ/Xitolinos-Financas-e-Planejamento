@@ -125,6 +125,7 @@ function amount(value) {
 }
 
 function nonNegativeCents(value, label) {
+  if (typeof value === 'boolean') throw new errors.ValidationError(`${label} precisa ser informado em centavos.`);
   const cents = Number(value);
   if (!Number.isSafeInteger(cents) || cents < 0) throw new errors.ValidationError(`${label} precisa ser zero ou um valor positivo em centavos.`);
   return cents;
@@ -302,12 +303,14 @@ async function dashboardData(strapi, userId, selectedMonth) {
       month: period, transactions: transactions.map(row => ({ ...row, date: row.date, dueDate: row.dueDate })),
       projected, accountBalanceCents: balanceAtMonthStart(period, accountsRaw, transactionsRaw)
     });
+    const closeForMonth = closes.find(item => item.month === period);
+    const reserveWithdrawalCents = Number(closeForMonth?.reserveWithdrawalCents || 0) + Number(closeForMonth?.savingsWithdrawalCents || 0) + Number(closeForMonth?.investmentWithdrawalCents || 0);
     return {
       month: period, expenseCents: summary.expenseCents, incomeCents: summary.incomeCents,
       committedCents: summary.committedCents, coverageNeededCents: summary.coverageNeededCents,
       projectedEndBalanceCents: summary.projectedEndBalanceCents,
       paidExpenseCents: summary.paidExpenseCents, paidIncomeCents: summary.paidIncomeCents,
-      expenseCount: summary.expenses.length, hasDeficit: summary.coverageNeededCents > 0
+      reserveWithdrawalCents, expenseCount: summary.expenses.length, hasDeficit: summary.coverageNeededCents > 0
     };
   });
   const projected = projectionsFor(month, transactionsRaw, recurrencesRaw, incomesRaw);
@@ -1019,9 +1022,9 @@ function makeActions(strapi) {
       const body = ctx.request.body || {};
       const month = validMonth(body.month);
       const current = (await ownedRows(strapi, 'month-close', user.id)).find(row => row.month === month);
-      const reserveAmount = Number(body.reserveWithdrawalCents || 0);
-      const savingsAmount = Number(body.savingsWithdrawalCents || 0);
-      const investmentAmount = Number(body.investmentWithdrawalCents || 0);
+      const reserveAmount = nonNegativeCents(body.reserveWithdrawalCents ?? 0, 'Retirada da reserva');
+      const savingsAmount = nonNegativeCents(body.savingsWithdrawalCents ?? 0, 'Retirada da poupanca');
+      const investmentAmount = nonNegativeCents(body.investmentWithdrawalCents ?? 0, 'Retirada dos investimentos');
       const withdrawals = [['emergency', reserveAmount], ['savings', savingsAmount], ['investment', investmentAmount]].filter(([, cents]) => cents > 0);
       if (withdrawals.length && body.confirmedWithdrawals !== true) throw new errors.ValidationError('Confirme que as retiradas aconteceram antes de atualizar as reservas.');
       const cash = await defaultAccount(strapi, user.id);

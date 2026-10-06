@@ -244,11 +244,13 @@ export function buildMobileDashboard(state, selectedMonth, today = localToday())
   ranges.sort();
   const monthSummaries = ranges.map(period => {
     const summary = totalsForMonth(period, transactions, projectionsFor(period, state), liquidBalanceBefore(`${period}-01`, state.accounts, state.transactions));
+    const closeForMonth = (state.monthCloses || []).find(item => item.month === period);
+    const reserveWithdrawalCents = Number(closeForMonth?.reserveWithdrawalCents || 0) + Number(closeForMonth?.savingsWithdrawalCents || 0) + Number(closeForMonth?.investmentWithdrawalCents || 0);
     return {
       month: period, expenseCents: summary.expenseCents, incomeCents: summary.incomeCents,
       committedCents: summary.committedCents, coverageNeededCents: summary.coverageNeededCents,
       projectedEndBalanceCents: summary.projectedEndBalanceCents, paidExpenseCents: summary.paidExpenseCents,
-      paidIncomeCents: summary.paidIncomeCents, expenseCount: summary.expenses.length, hasDeficit: summary.coverageNeededCents > 0
+      paidIncomeCents: summary.paidIncomeCents, reserveWithdrawalCents, expenseCount: summary.expenses.length, hasDeficit: summary.coverageNeededCents > 0
     };
   });
   const summary = totalsForMonth(month, transactions, projectionsFor(month, state), liquidBalanceBefore(`${month}-01`, state.accounts, state.transactions));

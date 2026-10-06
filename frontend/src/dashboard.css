@@ -539,6 +539,150 @@
   .dashboard-summary .summary-card { min-height: 105px; }
   .dashboard-summary .summary-card > small { font-size: 8px; }
 }
+
+/* Dashboard, transaction details and purchase totals */
+.dashboard-summary {
+  grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-block: 18px 25px;
+}
+.dashboard-summary .summary-card,
+.dashboard-summary .balance-overview-card {
+  min-height: 166px;
+  border-radius: 18px;
+}
+.dashboard-summary .balance-overview-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid var(--brand-dark);
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-secondary));
+  color: #ffffff;
+  text-align: left;
+}
+.balance-overview-card .summary-icon {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #ffffff24;
+  color: #d9f4bb;
+}
+.balance-overview-card .summary-label { color: #e8f3e1; font-size: 13px; font-weight: 700; }
+.balance-overview-values { display: grid; grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 9px; }
+.balance-overview-values > span { display: grid; min-width: 0; gap: 4px; }
+.balance-overview-values small { color: #d9e8d1; font-size: 10px; }
+.balance-overview-values strong { overflow: hidden; font-size: clamp(19px, 2vw, 27px); font-weight: 600; letter-spacing: -0.045em; text-overflow: ellipsis; }
+.balance-overview-values > i { width: 1px; height: 36px; background: #ffffff42; }
+.balance-overview-detail { color: #d9e8d1; font-size: 10px; }
+.dashboard-summary .summary-card:not(.balance-card):not(.covered-card):not(.attention) {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.dashboard-summary .summary-card:not(.balance-card):not(.covered-card):not(.attention) .summary-icon { background: var(--brand-tint); color: var(--brand-label); }
+.dashboard-summary .summary-card.attention {
+  border-color: var(--attention-line);
+  background: linear-gradient(135deg, var(--attention-surface), var(--surface));
+  color: var(--ink);
+}
+.dashboard-summary .summary-card.attention .summary-icon { background: var(--attention-chip); color: var(--attention-text); }
+.dashboard-summary .summary-card.attention > small { color: var(--attention-text); }
+.dashboard-summary .summary-card.covered-card {
+  border-color: var(--brand-border);
+  background: linear-gradient(135deg, var(--positive-surface), var(--surface));
+  color: var(--ink);
+}
+.dashboard-summary .summary-card.covered-card .summary-icon { background: var(--brand-tint); color: var(--brand-label); }
+.dashboard-summary .summary-card.covered-card > small { color: var(--positive-text); }
+.dashboard-summary .summary-link-hint { margin-top: auto; }
+.dashboard-greeting { gap: 18px; margin-bottom: 18px; }
+.dashboard-greeting h1 { max-width: 760px; line-height: 1.18; }
+.dashboard-highlight-grid,
+.dashboard-secondary-grid,
+.cashflow-page-grid { gap: 16px; }
+.dashboard-highlight-grid > *,
+.dashboard-secondary-grid > *,
+.finance-agenda,
+.reserve-preview,
+.cashflow-forecast { min-width: 0; }
+.invoice-card { min-height: 0; margin-bottom: 0; }
+.transaction-details { margin-top: 9px; }
+.transaction-details > summary { width: fit-content; color: var(--brand-label); font-size: 10px; font-weight: 650; cursor: pointer; }
+.transaction-details-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 14px; margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-muted); }
+.transaction-details-body > span { display: grid; min-width: 0; gap: 3px; }
+.transaction-details-body small { color: var(--muted); font-size: 9px; }
+.transaction-details-body strong { overflow-wrap: anywhere; font-size: 10px; }
+.transaction-detail-actions { display: flex !important; grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 7px !important; }
+.history-filters { display: grid; grid-template-columns: repeat(4, minmax(115px, 1fr)) minmax(170px, 1.35fr); gap: 9px; width: min(100%, 860px); }
+.history-filters > label { min-width: 0; }
+.history-extra > .section-head { align-items: end; gap: 16px; }
+.shopping-sticky-summary { align-items: center; gap: 16px; padding: 12px 16px; }
+.shopping-sticky-summary > div:first-child { min-width: 150px; }
+.shopping-summary-actions { align-items: center; }
+.shopping-summary-actions .button { min-height: 36px; }
+.shopping-item { grid-template-columns: 28px minmax(120px, 1fr) 58px 88px 92px 78px 86px 28px; }
+.shopping-item-field:nth-of-type(1) { grid-column: 3; }
+.shopping-item-field:nth-of-type(2) { grid-column: 5; }
+.shopping-item-history-price { display: grid; grid-column: 4; gap: 3px; min-width: 0; }
+.shopping-item-history-price small { color: var(--muted); font-size: 8px; }
+.shopping-item-history-price strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.shopping-item-total { grid-column: 6; }
+.shopping-status-menu { grid-column: 7; }
+.shopping-item > .row-action { grid-column: 8; }
+.shopping-item:not(.history-visible) .shopping-item-field:nth-of-type(2) { grid-column: 4 / 6; }
+.shopping-item:not(.history-visible) .shopping-item-total { grid-column: 6; }
+.shopping-total-caption { color: var(--muted); font-size: 9px; }
+
+@media (max-width: 980px) {
+  .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-summary .balance-overview-card { grid-column: 1 / -1; }
+  .history-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shopping-item { grid-template-columns: 28px minmax(100px, 1fr) 55px 78px 84px 70px 78px 24px; }
+}
+@media (max-width: 720px) {
+  .dashboard-summary { grid-template-columns: 1fr 1fr; gap: 9px; margin-block: 13px 18px; }
+  .dashboard-summary .balance-overview-card { grid-column: 1 / -1; }
+  .dashboard-summary .summary-card,
+  .dashboard-summary .balance-overview-card { min-height: 128px; padding: 14px; border-radius: 14px; }
+  .dashboard-summary .balance-overview-card { min-height: 136px; }
+  .balance-overview-values { gap: 8px; margin-top: 4px; }
+  .balance-overview-values strong { font-size: clamp(17px, 5vw, 23px); }
+  .balance-overview-card .summary-icon { top: 12px; right: 12px; width: 31px; height: 31px; }
+  .dashboard-greeting { align-items: flex-start; margin-bottom: 12px; }
+  .dashboard-greeting h1 { font-size: clamp(21px, 6vw, 28px); }
+  .dashboard-highlight-grid,
+  .dashboard-secondary-grid,
+  .cashflow-page-grid { gap: 10px; }
+  .transaction-details-body { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .history-filters { grid-template-columns: 1fr 1fr; width: 100%; }
+  .history-filters .search-box { grid-column: 1 / -1; }
+  .history-extra > .section-head { align-items: stretch; }
+  .shopping-sticky-summary { top: 54px; align-items: flex-start; flex-direction: column; gap: 8px; padding: 9px; }
+  .shopping-sticky-summary > div:first-child { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 8px; min-width: 0; }
+  .shopping-sticky-summary > div:first-child .eyebrow { grid-column: 1 / -1; }
+  .shopping-sticky-summary > div:first-child small { font-size: 8px; }
+  .shopping-summary-actions { width: 100%; justify-content: flex-start; }
+  .shopping-summary-actions .button { font-size: 8px; }
+  .shopping-item { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .shopping-item-state { grid-column: 1; grid-row: 1; }
+  .shopping-item-main { grid-column: 2 / -1; grid-row: 1; }
+  .shopping-item-field:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+  .shopping-item-history-price { grid-column: 2; grid-row: 2; }
+  .shopping-item-field:nth-of-type(2) { grid-column: 3; grid-row: 2; }
+  .shopping-item-total { grid-column: 4; grid-row: 2; }
+  .shopping-status-menu { grid-column: 1 / 4; grid-row: 3; }
+  .shopping-item > .row-action { grid-column: 4; grid-row: 3; justify-self: end; }
+  .shopping-item:not(.history-visible) .shopping-item-field:nth-of-type(2) { grid-column: 2 / 4; }
+  .shopping-item:not(.history-visible) .shopping-item-total { grid-column: 4; }
+}
 .mobile-bottom-nav {
   display: none;
 }

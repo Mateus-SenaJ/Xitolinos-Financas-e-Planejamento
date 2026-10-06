@@ -1,4 +1,5 @@
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { parseReceiptText } from './receipt-parser.js';
 
 const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
@@ -6,66 +7,6 @@ const MAX_ATTACHMENT_DATA_URL_LENGTH = 2_900_000;
 const BASE = `${import.meta.env.BASE_URL}ocr/`;
 let workerPromise;
 let activeProgress;
-
-function validIsoDate(value) {
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-}
-
-function dateSuggestion(text) {
-  const iso = text.match(/\b(20\d{2})-(0?[1-9]|1[0-2])-([0-2]?\d|3[01])\b/);
-  const local = text.match(/\b([0-3]?\d)[/.\-]([01]?\d)[/.\-](\d{2,4})\b/);
-  if (iso) {
-    const value = `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
-    return validIsoDate(value) ? value : '';
-  }
-  if (!local) return '';
-  const year = local[3].length === 2 ? `20${local[3]}` : local[3];
-  const value = `${year}-${local[2].padStart(2, '0')}-${local[1].padStart(2, '0')}`;
-  return validIsoDate(value) ? value : '';
-}
-
-function parseCents(raw) {
-  const value = String(raw).replace(/\s/g, '');
-  const normalized = value.includes(',')
-    ? value.replaceAll('.', '').replace(',', '.')
-    : value.replace(/\.(?=\d{3}(?:\D|$))/g, '');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : null;
-}
-
-function amountSuggestion(text) {
-  const candidates = [];
-  const moneyPattern = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi;
-  for (const line of text.split(/\r?\n/)) {
-    let match;
-    while ((match = moneyPattern.exec(line))) {
-      const amountCents = parseCents(match[1]);
-      if (amountCents) candidates.push({ amountCents, priority: /total|valor\s+(?:pago|transferido|da\s+transa[cç][aã]o|da\s+compra)|quantia/i.test(line) ? 1 : 0 });
-    }
-  }
-  candidates.sort((a, b) => b.priority - a.priority || b.amountCents - a.amountCents);
-  return candidates[0]?.amountCents || null;
-}
-
-export function parseReceiptText(text) {
-  const source = String(text || '').replace(/\u00a0/g, ' ');
-  const transactionCode = source.match(/\bE\d{32}\b/i)?.[0]
-    || source.match(/(?:id\s+da\s+transa[cç][aã]o|c[oó]digo\s+(?:da\s+)?transa[cç][aã]o|autentica[cç][aã]o)\s*[:#-]?\s*([A-Z0-9._/-]{6,80})/i)?.[1]
-    || '';
-  const receiptNumber = source.match(/(?:n[uú]mero\s+do\s+comprovante|n[uú]mero\s+do\s+recibo|comprovante\s+n[ºo.]?|recibo\s+n[ºo.]?)\s*[:#-]?\s*([A-Z0-9._/-]{3,60})/i)?.[1] || '';
-  const description = source.split(/\r?\n/).map(line => line.trim()).find(line => line.length >= 3 && line.length <= 100
-    && !/^(comprovante|recibo|pix|transfer[eê]ncia|pagamento|data|valor|autentica[cç][aã]o)\b/i.test(line)
-    && !/\d{2}[/.\-]\d{2}[/.\-]\d{2,4}/.test(line)) || '';
-  return {
-    description: description.replace(/\s+/g, ' ').slice(0, 100),
-    date: dateSuggestion(source),
-    amountCents: amountSuggestion(source),
-    transactionCode: transactionCode.slice(0, 80),
-    receiptNumber: receiptNumber.slice(0, 60)
-  };
-}
 
 async function getWorker(onProgress) {
   if (!workerPromise) {

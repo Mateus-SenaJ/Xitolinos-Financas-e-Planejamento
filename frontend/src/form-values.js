@@ -33,6 +33,20 @@ export function formatCentsForInput(cents) {
   return (Number(cents || 0) / 100).toFixed(2).replace('.', ',');
 }
 
+export function formatMoneyEntry(value) {
+  const input = String(value ?? '');
+  if (/[-\u2212]/.test(input)) return input;
+  const digits = input.replace(/\D/g, '').slice(0, 15);
+  if (!digits) return '';
+  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .format(Number(digits) / 100);
+}
+
+export function formatNonNegativeMoneyEntry(value) {
+  const input = String(value ?? '');
+  return /[-\u2212]/.test(input) ? input : formatMoneyEntry(input);
+}
+
 export function isRealDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return false;
   const date = new Date(`${value}T00:00:00.000Z`);

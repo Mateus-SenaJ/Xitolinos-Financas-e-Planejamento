@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCentsForInput, isRealDate, parseMoneyToCents } from './form-values.js';
+import { formatCentsForInput, formatMoneyEntry, formatNonNegativeMoneyEntry, isRealDate, parseMoneyToCents } from './form-values.js';
 
 describe('valores de formulário financeiros', () => {
   it.each([
@@ -15,6 +15,18 @@ describe('valores de formulário financeiros', () => {
 
   it('formata sem alterar a digitação em progresso', () => {
     expect(formatCentsForInput(123456)).toBe('1234,56');
+  });
+
+  it('insere as casas decimais ao digitar somente os algarismos', () => {
+    expect(formatMoneyEntry('123456')).toBe('1.234,56');
+    expect(formatMoneyEntry('7')).toBe('0,07');
+    expect(formatMoneyEntry('')).toBe('');
+  });
+
+  it('preserva sinais negativos para que os formulários possam rejeitá-los', () => {
+    expect(formatMoneyEntry('-123456')).toBe('-123456');
+    expect(formatNonNegativeMoneyEntry('-1.234,56')).toBe('-1.234,56');
+    expect(formatNonNegativeMoneyEntry('123456')).toBe('1.234,56');
   });
 
   it('rejeita valores ambíguos, vazios e datas impossíveis', () => {
