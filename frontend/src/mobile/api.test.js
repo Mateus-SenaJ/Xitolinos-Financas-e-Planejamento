@@ -15,6 +15,7 @@ vi.mock('./sqlite-store.js', () => ({
 
 import { api, login } from './api.js';
 import { DEMO_CREDENTIALS } from './seed-state.js';
+import shoppingCatalog from '../shopping-catalog.json';
 
 const owner = DEMO_CREDENTIALS.owner;
 const shopping = DEMO_CREDENTIALS.shopping;
@@ -46,7 +47,7 @@ describe('API local do aplicativo Android', () => {
     const board = await api('/finance/shopping', { token: session.token });
 
     expect(session.user.profile).toBe('shopping_viewer');
-    expect(board).toEqual({ lists: [], stock: [] });
+    expect(board).toEqual({ lists: [], stock: [], catalog: shoppingCatalog });
     await expect(api('/finance/dashboard?month=2026-10', { token: session.token }))
       .rejects.toThrow('só pode consultar a lista de compras');
     await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: '{}' }))
@@ -72,6 +73,45 @@ describe('API local do aplicativo Android', () => {
     expect(mockStore.state.transactions.filter(item => item.shoppingImportId === 'list_202610')).toHaveLength(1);
     await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify({ ...board, lists: [{ ...board.lists[0], name: 'Mercado alterado' }] }) }))
       .rejects.toThrow('já foi contabilizada');
+  });
+
+  it('não permite editar ou reabrir uma lista finalizada no armazenamento local', async () => {
+    const session = await signIn();
+    const emptyCompletion = { lists: [{ id: 'list_empty1', month: '2026-11', kind: 'market', name: 'Compra sem pagamento', status: 'completed', items: [{ id: 'item_empty1', name: 'Arroz', section: 'Mercearia', quantityMilli: 1000, unit: 'kg', estimatedCents: 800, paidCents: 0, status: 'planned' }] }], stock: [] };
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify(emptyCompletion) }))
+      .rejects.toThrow('valor pago para ser finalizada');
+    const unpurchasedCompletion = {
+      lists: [{ ...emptyCompletion.lists[0], id: 'list_unbought', name: 'Item ainda não comprado', items: [{ ...emptyCompletion.lists[0].items[0], id: 'item_unbought', paidCents: 900 }] }],
+      stock: []
+    };
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify(unpurchasedCompletion) }))
+      .rejects.toThrow('valor pago para ser finalizada');
+    const board = {
+      lists: [{ id: 'list_202611', month: '2026-11', kind: 'market', name: 'Mercado finalizado', status: 'completed', items: [{ id: 'item_0002', name: 'Arroz', section: 'Mercearia', quantityMilli: 1000, unit: 'kg', estimatedCents: 800, paidCents: 900, status: 'purchased' }] }],
+      stock: []
+    };
+    await api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify(board) });
+    const saved = await api('/finance/shopping', { token: session.token });
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify({ ...saved, lists: [{ ...saved.lists[0], status: 'open' }] }) }))
+      .rejects.toThrow('foi finalizada');
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify({ ...saved, lists: [{ ...saved.lists[0], name: 'Lista alterada' }] }) }))
+      .rejects.toThrow('foi finalizada');
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify({ ...saved, lists: [] }) }))
+      .rejects.toThrow('não pode ser removida do histórico');
+  });
+
+  it('rejeita finalizar uma lista cujo total ultrapassa inteiros seguros', async () => {
+    const session = await signIn();
+    const board = {
+      lists: [{
+        id: 'list_overflow', month: '2026-11', kind: 'market', name: 'Compra acima do limite', status: 'completed',
+        items: [{ id: 'item_overflow', name: 'Arroz', section: 'Mercearia', quantityMilli: 1000000, unit: 'kg', estimatedCents: 0, paidCents: Number.MAX_SAFE_INTEGER, status: 'purchased' }]
+      }],
+      stock: []
+    };
+
+    await expect(api('/finance/shopping', { token: session.token, method: 'PUT', body: JSON.stringify(board) }))
+      .rejects.toThrow('total da compra ultrapassa o limite permitido');
   });
 
   it('grava, classifica, edita e restaura uma movimentação sem arredondar centavos', async () => {
@@ -160,6 +200,7 @@ describe('API local do aplicativo Android', () => {
       body: JSON.stringify({ lists: [{ id: 'list_backup_1', month: '2026-10', kind: 'market', name: 'Mercado salvo', items: [] }], stock: [] })
     });
     const backup = await api('/finance/export?format=backup&month=2026-10', { token: source.token });
+    backup.records['shopping-state'][0].catalog.push({ id: 'custom-snack', name: 'Biscoito local', kind: 'market', category: 'Mercearia', section: 'Lanches', unit: 'pack' });
 
     mockStore.state = null;
     const target = await signIn();
@@ -168,5 +209,6 @@ describe('API local do aplicativo Android', () => {
     expect(restored.importedCount).toBeGreaterThan(0);
     expect(mockStore.state.transactions.filter(row => row.description === 'Conta importada de teste')).toHaveLength(1);
     expect(mockStore.state.shoppingState.lists.filter(row => row.name === 'Mercado salvo')).toHaveLength(1);
+    expect(mockStore.state.shoppingState.catalog).toContainEqual({ id: 'custom-snack', name: 'Biscoito local', kind: 'market', category: 'Mercearia', section: 'Lanches', unit: 'pack' });
   });
 });

@@ -1,3 +1,5 @@
+import shoppingCatalog from '../shopping-catalog.json';
+
 const categories = [
   ['Moradia', 'expense'], ['Mercado', 'expense'], ['Transporte', 'expense'],
   ['Alimentação', 'expense'], ['Saúde', 'expense'], ['Assinaturas', 'expense'],
@@ -72,7 +74,7 @@ export function createInitialMobileState() {
     monthCloses: [],
     merchantRules: [],
     desiredPurchases: [],
-    shoppingState: { lists: [], stock: [], sharedViewerIds: [2] },
+    shoppingState: { lists: [], stock: [], catalog: shoppingCatalog, sharedViewerIds: [2] },
     importBatches: [],
     auditEvents: []
   };

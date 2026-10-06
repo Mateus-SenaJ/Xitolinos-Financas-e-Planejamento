@@ -32,6 +32,28 @@ test('a financially recorded list cannot be edited or counted again through stat
   assert.throws(() => normalizeShoppingBoard({ lists: [], stock: [] }, previous), /n\u00E3o pode ser removida/);
 });
 
+test('a completed shopping list cannot be edited, reopened or deleted from history', () => {
+  const emptyCompletion = { ...baseList(), status: 'completed', items: [{ ...baseList().items[0], paidCents: 0, status: 'planned' }] };
+  assert.throws(() => normalizeShoppingBoard({ lists: [emptyCompletion], stock: [] }), /valor pago para ser finalizada/);
+  const unpurchasedCompletion = { ...baseList(), status: 'completed', items: [{ ...baseList().items[0], status: 'planned' }] };
+  assert.throws(() => normalizeShoppingBoard({ lists: [unpurchasedCompletion], stock: [] }), /valor pago para ser finalizada/);
+  const defaultQuantityCompletion = { ...baseList(), status: 'completed', items: [{ ...baseList().items[0], quantityMilli: undefined }] };
+  const defaultQuantitySaved = normalizeShoppingBoard({ lists: [defaultQuantityCompletion], stock: [] });
+  assert.equal(defaultQuantitySaved.lists[0].items[0].quantityMilli, 1000);
+  assert.equal(shoppingListTotalCents(defaultQuantitySaved.lists[0]), 750);
+  const saved = normalizeShoppingBoard({ lists: [{ ...baseList(), status: 'completed' }], stock: [] });
+  const previous = structuredClone(saved);
+  const changed = structuredClone(saved);
+  changed.lists[0].items[0].paidCents = 900;
+  assert.throws(() => normalizeShoppingBoard(changed, previous), /foi finalizada/);
+  const reopened = structuredClone(saved);
+  reopened.lists[0].status = 'open';
+  assert.throws(() => normalizeShoppingBoard(reopened, previous), /foi finalizada/);
+  assert.throws(() => normalizeShoppingBoard({ lists: [], stock: [] }, previous), /n\u00E3o pode ser removida/);
+  const openList = normalizeShoppingBoard({ lists: [baseList()], stock: [] });
+  assert.deepEqual(normalizeShoppingBoard({ lists: [], stock: [] }, openList).lists, []);
+});
+
 test('shopping board rejects invalid quantity, duplicate IDs and unsupported state values', () => {
   const invalidQuantity = baseList();
   invalidQuantity.items[0].quantityMilli = 0;

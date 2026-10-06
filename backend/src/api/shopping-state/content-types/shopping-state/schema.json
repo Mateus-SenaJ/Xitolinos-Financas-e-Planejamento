@@ -22,6 +22,11 @@
       "required": true,
       "default": []
     },
+    "catalog": {
+      "type": "json",
+      "required": true,
+      "default": []
+    },
     "sharedViewerIds": {
       "type": "json",
       "required": true,

@@ -1,6 +1,7 @@
 'use strict';
 
 const uid = name => `api::${name}.${name}`;
+const shoppingCatalog = require('../../frontend/src/shopping-catalog.json');
 const demoTransactions = [
   ['Salário', 'Salário', '2026-09-30', 'income', 850000],
   ['Projeto freelance', 'Outros', '2026-09-28', 'income', 45000],
@@ -119,8 +120,8 @@ async function seedDemoData(strapi) {
   if (!demoOwner || !demoShoppingViewer) return;
   const shoppingStates = await rows(strapi, 'shopping-state', demoOwner.id);
   const sharedViewerIds = [...new Set([...(shoppingStates[0]?.sharedViewerIds || []).map(String), String(demoShoppingViewer.id)])];
-  if (shoppingStates.length) await strapi.entityService.update(uid('shopping-state'), shoppingStates[0].id, { data: { sharedViewerIds } });
-  else await strapi.entityService.create(uid('shopping-state'), { data: { lists: [], stock: [], sharedViewerIds, owner: demoOwner.id } });
+  if (shoppingStates.length) await strapi.entityService.update(uid('shopping-state'), shoppingStates[0].id, { data: { sharedViewerIds, catalog: shoppingCatalog } });
+  else await strapi.entityService.create(uid('shopping-state'), { data: { lists: [], stock: [], catalog: shoppingCatalog, sharedViewerIds, owner: demoOwner.id } });
 }
 
 module.exports = { seedDemoData, demoTransactions };

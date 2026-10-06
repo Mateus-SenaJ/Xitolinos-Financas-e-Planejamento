@@ -11,6 +11,13 @@ function formatNonNegativeInput(event) {
   const input = event.currentTarget;
   input.setCustomValidity(/[-\u2212]/.test(input.value) ? 'Informe um valor igual ou maior que zero.' : '');
   input.value = formatNonNegativeMoneyEntry(input.value);
+  requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length); });
+}
+function updateMoneyInput(event, update) {
+  const input = event.currentTarget;
+  const next = formatMoneyEntry(input.value);
+  update(next);
+  requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(next.length, next.length); });
 }
 
 export default function Settings({ data, billing, token, onRefresh, onToast, onOpenImport, viewer }) {
@@ -114,7 +121,7 @@ export default function Settings({ data, billing, token, onRefresh, onToast, onO
       </section>
       <section className="surface settings-card">
         <div className="section-head"><div><span className="eyebrow">AVISOS E PROTEÇÃO</span><h2>Seus limites</h2></div></div>
-        {viewer ? <p className="muted">Margem mínima após os compromissos: <strong>R$ {minimumReserveInput || '0,00'}</strong></p> : <label>Margem mínima após os compromissos<span className="currency-input"><b>R$</b><input inputMode="numeric" value={minimumReserveInput} readOnly={viewer} onChange={event => setMinimumReserveInput(formatMoneyEntry(event.target.value))} aria-describedby="minimum-reserve-help"/></span><small id="minimum-reserve-help">Digite em reais; o valor será convertido para centavos ao salvar.</small></label>}
+        {viewer ? <p className="muted">Margem mínima após os compromissos: <strong>R$ {minimumReserveInput || '0,00'}</strong></p> : <label>Margem mínima após os compromissos<span className="currency-input"><b>R$</b><input inputMode="numeric" value={minimumReserveInput} readOnly={viewer} onChange={event => updateMoneyInput(event, setMinimumReserveInput)} aria-describedby="minimum-reserve-help"/></span><small id="minimum-reserve-help">Digite em reais; o valor será convertido para centavos ao salvar.</small></label>}
         {viewer ? <p className="muted">Parar de comprar antes do fechamento: <strong>{(prefs.cardStopDaysBefore ?? 3) === 0 ? 'No próprio dia' : (prefs.cardStopDaysBefore ?? 3) === 7 ? '1 semana antes' : (prefs.cardStopDaysBefore ?? 3) + ' dias antes'}</strong></p> : <label>Parar de comprar antes do fechamento<select disabled={viewer} value={prefs.cardStopDaysBefore ?? 3} onChange={event => setPrefs({ ...prefs, cardStopDaysBefore: Number(event.target.value) })}><option value="0">No próprio dia</option><option value="1">1 dia antes</option><option value="2">2 dias antes</option><option value="3">3 dias antes</option><option value="5">5 dias antes</option><option value="7">1 semana antes</option></select></label>}
         {viewer ? <p className="muted">Dia de revisar e fechar o mês: <strong>Dia {prefs.closeoutDay || 1}</strong></p> : <label>Dia de revisar e fechar o mês<select disabled={viewer} value={prefs.closeoutDay || 1} onChange={event => setPrefs({ ...prefs, closeoutDay: Number(event.target.value) })}>{Array.from({ length: 28 }, (_, index) => <option key={index + 1} value={index + 1}>Dia {index + 1}</option>)}</select></label>}
         {!viewer && <button className="button button-primary" onClick={save} disabled={busy}>{busy ? 'Salvando…' : 'Guardar definições'}</button>}

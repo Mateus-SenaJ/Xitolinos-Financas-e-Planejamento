@@ -1,5 +1,7 @@
 'use strict';
 
+const defaultCatalog = require('../../frontend/src/shopping-catalog.json');
+
 const LIST_KINDS = new Set(['market', 'pharmacy', 'other']);
 const ITEM_STATES = new Set(['planned', 'purchased', 'not-found', 'buy-elsewhere', 'postponed']);
 const UNITS = new Set(['un', 'kg', 'g', 'l', 'ml', 'pack']);
@@ -48,13 +50,16 @@ function normalizeShoppingBoard(input = {}, previous = {}) {
     itemCount += list.items.length;
     if (itemCount > MAX_ITEMS) throw new Error('A lista ultrapassa o limite local de itens.');
     const previousList = priorLists.get(id);
+    const completedCents = shoppingListTotalCents({ items: list.items });
+    if (list.status === 'completed' && previousList?.status !== 'completed' && (!Number.isSafeInteger(completedCents) || completedCents <= 0)) throw new Error('A lista precisa ter ao menos um item comprado com valor pago para ser finalizada.');
+    const fingerprint = value => JSON.stringify({
+      id: value.id, month: value.month, kind: value.kind, name: value.name, status: value.status,
+      items: (value.items || []).map(item => ({ id: item.id, catalogId: item.catalogId || '', name: item.name, category: item.category || 'Outros', section: item.section, quantityMilli: item.quantityMilli, unit: item.unit, estimatedCents: item.estimatedCents, paidCents: item.paidCents, status: item.status, addedToStock: item.addedToStock === true }))
+    });
     if (previousList?.financialTransactionId) {
-      const fingerprint = value => JSON.stringify({
-        id: value.id, month: value.month, kind: value.kind, name: value.name, status: value.status,
-        items: (value.items || []).map(item => ({ id: item.id, name: item.name, section: item.section, quantityMilli: item.quantityMilli, unit: item.unit, estimatedCents: item.estimatedCents, paidCents: item.paidCents, status: item.status, addedToStock: item.addedToStock === true }))
-      });
       if (fingerprint(list) !== fingerprint(previousList)) throw new Error('Esta lista já foi contabilizada e não pode ser alterada.');
     }
+    if (previousList?.status === 'completed' && (list.status !== 'completed' || fingerprint(list) !== fingerprint(previousList))) throw new Error('Esta lista foi finalizada e não pode ser alterada.');
     const itemIds = new Set();
     return {
       id,
@@ -71,7 +76,9 @@ function normalizeShoppingBoard(input = {}, previous = {}) {
         if (!UNITS.has(item.unit || 'un')) throw new Error('Unidade do item inválida.');
         return {
           id: itemId,
+          catalogId: item.catalogId ? text(item.catalogId, 'Identificador do produto', 80) : '',
           name: text(item.name, 'Nome do item', 100),
+          category: text(item.category || 'Outros', 'Categoria do item', 60),
           section: text(item.section || 'Outros', 'Seção', 60),
           quantityMilli: quantity(item.quantityMilli ?? 1000),
           unit: item.unit || 'un',
@@ -85,7 +92,7 @@ function normalizeShoppingBoard(input = {}, previous = {}) {
   });
 
   for (const list of priorLists.values()) {
-    if (list.financialTransactionId && !ids.has(list.id)) throw new Error('Uma lista contabilizada n\u00E3o pode ser removida do hist\u00F3rico.');
+    if ((list.financialTransactionId || list.status === 'completed') && !ids.has(list.id)) throw new Error('Uma lista finalizada n\u00E3o pode ser removida do hist\u00F3rico.');
   }
 
   const stockIds = new Set();
@@ -102,13 +109,13 @@ function normalizeShoppingBoard(input = {}, previous = {}) {
       unit: item.unit || 'un'
     };
   });
-  return { lists, stock };
+  return { lists, stock, catalog: Array.isArray(previous.catalog) && previous.catalog.length ? previous.catalog : Array.isArray(input.catalog) && input.catalog.length ? input.catalog : defaultCatalog };
 }
 
 function shoppingListTotalCents(list) {
   return (list?.items || []).filter(item => item.status === 'purchased' && item.paidCents > 0)
     .reduce((total, item) => {
-      const lineTotal = Math.round(item.paidCents * item.quantityMilli / 1000);
+      const lineTotal = Math.round(Number(item.paidCents) * Number(item.quantityMilli ?? 1000) / 1000);
       if (!Number.isSafeInteger(lineTotal) || !Number.isSafeInteger(total + lineTotal)) throw new Error('O total da compra ultrapassa o limite permitido.');
       return total + lineTotal;
     }, 0);

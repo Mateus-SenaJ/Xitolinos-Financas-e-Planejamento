@@ -73,7 +73,7 @@ const types = [
     category: relation('api::category.category'), status: enumeration(['planned','purchased','cancelled'], 'planned'), ...owner
   }],
   ['shopping-state', 'shopping_states', 'Listas de compras', {
-    lists: { type: 'json', required: true, default: [] }, stock: { type: 'json', required: true, default: [] }, sharedViewerIds: { type: 'json', required: true, default: [] }, ...owner
+    lists: { type: 'json', required: true, default: [] }, stock: { type: 'json', required: true, default: [] }, catalog: { type: 'json', required: true, default: [] }, sharedViewerIds: { type: 'json', required: true, default: [] }, ...owner
   }],
   ['billing-subscription', 'billing_subscriptions', 'Assinatura Xitolinos', {
     provider: enumeration(['local','stripe'], 'local'), plan: text(true, 40), status: enumeration(['local','trialing','active','past_due','canceled','unpaid','incomplete','incomplete_expired','paused'], 'local'),

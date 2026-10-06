@@ -1,5 +1,6 @@
 import { readMobileState, updateMobileState, writeMobileState } from './sqlite-store.js';
 import { createInitialMobileState, DEMO_CREDENTIALS } from './seed-state.js';
+import shoppingCatalog from '../shopping-catalog.json';
 import { buildMobileDashboard, classifyImportedRows, duplicateKey, installments, monthDate, monthKey, normalizeMerchant, recurringOccurrences, shiftMonth, validMonth } from './finance-domain.js';
 
 const encoder = new TextEncoder();
@@ -205,8 +206,29 @@ function updateSchedule(state, key, id, input) {
 }
 
 function shoppingTotal(list) {
-  return (list.items || []).filter(item => item.status === 'purchased' && item.paidCents > 0)
-    .reduce((total, item) => total + Math.round(item.paidCents * item.quantityMilli / 1000), 0);
+  return (list.items || []).filter(item => item.status === 'purchased' && Number(item.paidCents || 0) > 0)
+    .reduce((total, item) => {
+      const lineTotal = Math.round(Number(item.paidCents) * Number(item.quantityMilli ?? 1000) / 1000);
+      if (!Number.isSafeInteger(lineTotal) || !Number.isSafeInteger(total + lineTotal)) throw new Error('O total da compra ultrapassa o limite permitido.');
+      return total + lineTotal;
+    }, 0);
+}
+
+function mergeShoppingCatalog(inputCatalog, existingCatalog) {
+  const merged = new Map();
+  for (const source of [...shoppingCatalog, ...(Array.isArray(inputCatalog) ? inputCatalog : []), ...(Array.isArray(existingCatalog) ? existingCatalog : [])]) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('O catálogo de compras do backup é inválido.');
+    const id = String(source.id || '');
+    const kind = String(source.kind || '');
+    const unit = String(source.unit || '');
+    const name = String(source.name || '').trim();
+    const category = String(source.category || '').trim();
+    const section = String(source.section || '').trim();
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !['market', 'pharmacy', 'other'].includes(kind) || !['un', 'kg', 'g', 'l', 'ml', 'pack'].includes(unit) || !name || name.length > 100 || !category || category.length > 60 || !section || section.length > 60) throw new Error('O catálogo de compras do backup contém um produto inválido.');
+    merged.set(id, { id, kind, unit, name, category, section });
+  }
+  if (merged.size > 500) throw new Error('O catálogo de compras ultrapassou o limite permitido.');
+  return [...merged.values()];
 }
 
 function validateShoppingState(input, previous) {
@@ -222,8 +244,11 @@ function validateShoppingState(input, previous) {
     totalItems += list.items.length;
     if (totalItems > 4000) throw new Error('A lista ultrapassou o limite local de itens.');
     const old = prior.get(list.id);
-    const fingerprint = value => JSON.stringify({ id: value.id, month: value.month, kind: value.kind, name: value.name, status: value.status, items: (value.items || []).map(item => ({ id: item.id, name: item.name, section: item.section, quantityMilli: item.quantityMilli, unit: item.unit, estimatedCents: item.estimatedCents, paidCents: item.paidCents, status: item.status, addedToStock: item.addedToStock === true })) });
+    const completedCents = shoppingTotal(list);
+    if (list.status === 'completed' && old?.status !== 'completed' && (!Number.isSafeInteger(completedCents) || completedCents <= 0)) throw new Error('A lista precisa ter ao menos um item comprado com valor pago para ser finalizada.');
+    const fingerprint = value => JSON.stringify({ id: value.id, month: value.month, kind: value.kind, name: value.name, status: value.status, items: (value.items || []).map(item => ({ id: item.id, catalogId: item.catalogId || '', name: item.name, category: item.category || 'Outros', section: item.section, quantityMilli: item.quantityMilli, unit: item.unit, estimatedCents: item.estimatedCents, paidCents: item.paidCents, status: item.status, addedToStock: item.addedToStock === true })) });
     if (old?.financialTransactionId && fingerprint(list) !== fingerprint(old)) throw new Error('Esta lista já foi contabilizada e não pode ser alterada.');
+    if (old?.status === 'completed' && (list.status !== 'completed' || fingerprint(list) !== fingerprint(old))) throw new Error('Esta lista foi finalizada e não pode ser alterada.');
     const itemIds = new Set();
     return {
       ...list, status: list.status === 'completed' ? 'completed' : 'open',
@@ -238,11 +263,11 @@ function validateShoppingState(input, previous) {
         const paidCents = Number(item.paidCents ?? 0);
         if (!Number.isSafeInteger(quantityMilli) || quantityMilli < 1 || quantityMilli > 1000000 || !Number.isSafeInteger(estimatedCents) || estimatedCents < 0 || !Number.isSafeInteger(paidCents) || paidCents < 0) throw new Error('Quantidade ou valor de item inválido.');
         if (!String(item.name || '').trim() || !String(item.section || 'Outros').trim()) throw new Error('Informe nome e seção para cada item.');
-        return { ...item, name: String(item.name).trim().slice(0, 100), section: String(item.section || 'Outros').trim().slice(0, 60), quantityMilli, estimatedCents, paidCents, unit: item.unit || 'un', status: item.status || 'planned', addedToStock: item.addedToStock === true };
+        return { ...item, catalogId: String(item.catalogId || '').slice(0, 80), name: String(item.name).trim().slice(0, 100), category: String(item.category || 'Outros').trim().slice(0, 60), section: String(item.section || 'Outros').trim().slice(0, 60), quantityMilli, estimatedCents, paidCents, unit: item.unit || 'un', status: item.status || 'planned', addedToStock: item.addedToStock === true };
       })
     };
   });
-  for (const old of previous.lists) if (old.financialTransactionId && !listIds.has(old.id)) throw new Error('Uma lista contabilizada não pode ser removida do histórico.');
+  for (const old of previous.lists) if ((old.financialTransactionId || old.status === 'completed') && !listIds.has(old.id)) throw new Error('Uma lista finalizada não pode ser removida do histórico.');
   const stockIds = new Set();
   const stock = input.stock.map(item => {
     if (!/^[A-Za-z0-9_-]{8,80}$/.test(String(item.id || '')) || stockIds.has(item.id)) throw new Error('Identificador de estoque inválido ou repetido.');
@@ -252,7 +277,7 @@ function validateShoppingState(input, previous) {
     if (!Number.isSafeInteger(quantityMilli) || quantityMilli < 1 || quantityMilli > 1000000) throw new Error('Quantidade de estoque inválida.');
     return { ...item, quantityMilli, unit: item.unit || 'un', name: String(item.name || '').trim().slice(0, 100), section: String(item.section || 'Outros').trim().slice(0, 60) };
   });
-  return { lists, stock };
+  return { lists, stock, catalog: mergeShoppingCatalog(input.catalog, previous.catalog) };
 }
 
 function backupRelation(source, field) {
@@ -333,7 +358,11 @@ function restoreMobileBackup(state, input) {
 
   const listIdMap = new Map();
   for (const sourceState of input.records['shopping-state'] || []) {
-    const incoming = validateShoppingState({ lists: sourceState.lists || [], stock: sourceState.stock || [] }, { lists: [], stock: [] });
+    const incoming = validateShoppingState(
+      { lists: sourceState.lists || [], stock: sourceState.stock || [], catalog: sourceState.catalog || [] },
+      { lists: [], stock: [], catalog: state.shoppingState.catalog || shoppingCatalog }
+    );
+    state.shoppingState.catalog = incoming.catalog;
     const existingLists = new Map(state.shoppingState.lists.map(row => [`${row.month}|${row.kind}|${row.name}`, row]));
     for (const list of incoming.lists) {
       const key = `${list.month}|${list.kind}|${list.name}`;
@@ -394,6 +423,10 @@ function restoreMobileBackup(state, input) {
 async function currentState() {
   const state = await readMobileState();
   if (!state) throw new Error('Os dados locais não foram iniciados. Saia e entre novamente.');
+  if (!Array.isArray(state.shoppingState.catalog) || !state.shoppingState.catalog.length) {
+    state.shoppingState.catalog = shoppingCatalog;
+    await writeMobileState(state);
+  }
   return state;
 }
 
@@ -467,7 +500,7 @@ export async function api(path, options = {}) {
   if (pathname === '/finance/preferences' && method === 'GET') return { item: state.preferences };
   if (pathname === '/finance/shopping' && method === 'GET') {
     if (shoppingViewer && !(state.shoppingState.sharedViewerIds || []).some(id => String(id) === String(user.id))) throw new Error('A lista de compras não foi compartilhada com este perfil.');
-    return { lists: state.shoppingState.lists, stock: state.shoppingState.stock };
+    return { lists: state.shoppingState.lists, stock: state.shoppingState.stock, catalog: state.shoppingState.catalog || shoppingCatalog };
   }
   if (pathname === '/finance/audit' && method === 'GET') return { items: state.auditEvents.slice(0, 100) };
 
@@ -722,6 +755,7 @@ export async function api(path, options = {}) {
     const cents = shoppingTotal(list);
     if (!cents) throw new Error('Informe o preço pago e marque ao menos um item comprado antes de registrar a despesa.');
     const row = createTransaction(state, { description: `Compras ${list.name}`.slice(0, 120), amountCents: cents, date: dateValue(body.date || today()), type: 'expense', method: body.method || 'account', accountId: body.accountId, categoryId: body.categoryId }, { source: 'shopping', shoppingImportId: list.id }).items[0];
+    list.status = 'completed';
     list.financialTransactionId = row.id;
     recordAudit(state, 'shopping-expense', 'transaction', row.id, null, { shoppingListId: list.id, amountCents: cents }); await writeMobileState(state);
     return { alreadyRecorded: false, amountCents: cents, transaction: row };
@@ -792,7 +826,7 @@ export async function api(path, options = {}) {
         'income-source': state.incomeSources.map(row => ({ ...row, category: relation(row, 'category'), account: relation(row, 'account') })),
         reserve: state.reserves.map(row => ({ ...row, account: relation(row, 'account') })), goal: state.goals, budget: state.budgets.map(row => ({ ...row, category: relation(row, 'category') })),
         preference: [safePreferences], 'month-close': state.monthCloses, 'merchant-rule': state.merchantRules,
-        'desired-purchase': state.desiredPurchases || [], 'shopping-state': [{ lists: state.shoppingState.lists, stock: state.shoppingState.stock }],
+        'desired-purchase': state.desiredPurchases || [], 'shopping-state': [{ lists: state.shoppingState.lists, stock: state.shoppingState.stock, catalog: state.shoppingState.catalog || shoppingCatalog }],
         transaction: state.transactions.map(row => ({ ...row, account: relation(row, 'account'), counterpartyAccount: relation(row, 'counterpartyAccount'), category: relation(row, 'category'), card: relation(row, 'card'), recurrence: relation(row, 'recurrence'), incomeSource: relation(row, 'incomeSource') }))
       };
       return { schemaVersion: 1, application: 'Xitolinos Planejamento', exportedAt: new Date().toISOString(), records };

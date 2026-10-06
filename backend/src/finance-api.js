@@ -691,23 +691,23 @@ function makeActions(strapi) {
         const states = await strapi.entityService.findMany(uid('shopping-state'), { populate, limit: 10000 });
         const shared = states.find(row => isSharedShoppingViewer(row, user));
         if (!shared) throw new errors.ForbiddenError('O perfil ainda n\u00E3o recebeu acesso a uma lista.');
-        return { lists: shared.lists || [], stock: shared.stock || [] };
+        return { lists: shared.lists || [], stock: shared.stock || [], catalog: shared.catalog || [] };
       }
       const row = (await ownedRows(strapi, 'shopping-state', user.id))[0];
-      return { lists: row?.lists || [], stock: row?.stock || [] };
+      return { lists: row?.lists || [], stock: row?.stock || [], catalog: row?.catalog || [] };
     }),
     saveShoppingState: ctx => withUser(ctx, true, async user => {
       const current = (await ownedRows(strapi, 'shopping-state', user.id))[0];
       let board;
       try { board = normalizeShoppingBoard(ctx.request.body || {}, current || {}); }
       catch (error) { throw new errors.ValidationError(error.message); }
-      const data = { lists: board.lists, stock: board.stock, sharedViewerIds: current?.sharedViewerIds || [], owner: user.id };
+      const data = { lists: board.lists, stock: board.stock, catalog: board.catalog, sharedViewerIds: current?.sharedViewerIds || [], owner: user.id };
       const row = current
         ? await strapi.entityService.update(uid('shopping-state'), current.id, { data })
         : await strapi.entityService.create(uid('shopping-state'), { data });
       await audit(strapi, user, current ? 'update' : 'create', 'shopping-state', row.id, null,
         { listCount: board.lists.length, itemCount: board.lists.reduce((sum, list) => sum + list.items.length, 0), stockCount: board.stock.length });
-      return { lists: row.lists || [], stock: row.stock || [] };
+      return { lists: row.lists || [], stock: row.stock || [], catalog: row.catalog || [] };
     }),
     commitShoppingList: ctx => withUser(ctx, true, async user => {
       const body = ctx.request.body || {};
@@ -737,7 +737,7 @@ function makeActions(strapi) {
         type: 'expense', method: body.method || 'account', accountId: body.accountId,
         categoryId: body.categoryId, memo: `Lista local ${list.id}`
       }, { source: 'shopping', shoppingImportId: list.id });
-      lists[index] = { ...list, financialTransactionId: created.items[0].id };
+      lists[index] = { ...list, status: 'completed', financialTransactionId: created.items[0].id };
       await strapi.entityService.update(uid('shopping-state'), shoppingState.id, { data: { lists, stock: shoppingState.stock || [] } });
       await audit(strapi, user, 'shopping-expense', 'transaction', created.items[0].id, null, { shoppingListId: list.id, amountCents });
       return { alreadyRecorded: false, amountCents, transaction: created.items[0] };
