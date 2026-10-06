@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, login, parseStatement, parseStatementText } from './api.js';
+import { api, login, parseStatement, parseStatementText, saveLocalFile } from './api.js';
 import { Icon } from './icons.jsx';
 import Settings from './Settings.jsx';
 import DeviceUnlock from './DeviceUnlock.jsx';
@@ -130,7 +130,7 @@ function Dashboard({ data, month, onMonthChange, viewer, onOpenForm, onOpenAdvic
 function MovementHistory({ data, month, onMonthChange, token, viewer, onOpenForm, onEdit, onDelete, onToast, search, setSearch }) {
   const [contextFilter, setContextFilter] = useState('all');
   const rows = data.details.filter(row => `${row.description} ${row.category || ''} ${row.cardName || ''} ${row.accountName || ''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')) && (contextFilter === 'all' || row.type === 'expense' && (contextFilter === 'unclassified' ? !row.spendingContext : row.spendingContext === contextFilter)));
-  return <><header className="page-title"><div><span className="eyebrow">HISTÓRICO ORGANIZADO</span><h1>Transações</h1><p>Cada lançamento, com data, categoria e situação atualizada.</p></div><div className="title-actions"><button className="button button-quiet" onClick={async () => { try { const result = await api(`/finance/export?month=${month}`, { token }); const url = URL.createObjectURL(new Blob([result.text], { type: 'text/plain;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = `xitolinos-${month}.txt`; link.click(); URL.revokeObjectURL(url); } catch (error) { onToast(error.message); } }}><Icon name="download"/>Exportar para compartilhar</button>{!viewer && <button className="button button-primary" onClick={() => onOpenForm('movement-choice')}><Icon name="plus"/>{'Adicionar movimenta\u00E7\u00E3o'}</button>}</div></header><MonthRail data={data} month={month} onChange={onMonthChange}/><section className="surface history-extra"><div className="section-head"><div><span className="eyebrow">DESPESAS E ENTRADAS</span><h2>{monthLabel(month)}</h2><p>{rows.length} registros no período</p></div><label className="context-filter">Tipo de despesa<select aria-label="Filtrar despesas por rotina" value={contextFilter} onChange={event => setContextFilter(event.target.value)}><option value="all">Todas</option><option value="routine">Rotina mensal</option><option value="extra">Fora da rotina</option><option value="unclassified">Sem classificação</option></select></label><div className="search-box"><Icon name="search"/><input id="history-search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Descrição, categoria ou cartão"/></div></div><ItemList rows={rows} viewer={viewer} onEdit={onEdit} onDelete={onDelete}/></section></>;
+  return <><header className="page-title"><div><span className="eyebrow">HISTÓRICO ORGANIZADO</span><h1>Transações</h1><p>Cada lançamento, com data, categoria e situação atualizada.</p></div><div className="title-actions"><button className="button button-quiet" onClick={async () => { try { const result = await api(`/finance/export?month=${month}`, { token }); await saveLocalFile(`xitolinos-${month}.txt`, result.text, 'text/plain;charset=utf-8'); } catch (error) { onToast(error.message); } }}><Icon name="download"/>Exportar para compartilhar</button>{!viewer && <button className="button button-primary" onClick={() => onOpenForm('movement-choice')}><Icon name="plus"/>{'Adicionar movimenta\u00E7\u00E3o'}</button>}</div></header><MonthRail data={data} month={month} onChange={onMonthChange}/><section className="surface history-extra"><div className="section-head"><div><span className="eyebrow">DESPESAS E ENTRADAS</span><h2>{monthLabel(month)}</h2><p>{rows.length} registros no período</p></div><label className="context-filter">Tipo de despesa<select aria-label="Filtrar despesas por rotina" value={contextFilter} onChange={event => setContextFilter(event.target.value)}><option value="all">Todas</option><option value="routine">Rotina mensal</option><option value="extra">Fora da rotina</option><option value="unclassified">Sem classificação</option></select></label><div className="search-box"><Icon name="search"/><input id="history-search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Descrição, categoria ou cartão"/></div></div><ItemList rows={rows} viewer={viewer} onEdit={onEdit} onDelete={onDelete}/></section></>;
 }
 
 function CashflowPage({ data, month, onMonthChange, setPage }) {
@@ -376,8 +376,7 @@ function ShoppingPage({ token, data, month, onMonthChange, onToast, onRefresh, v
   }
   function exportCsv() {
     if (!currentList) return;
-    const url = URL.createObjectURL(new Blob([`﻿${toShoppingCsv(currentList)}`], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a'); link.href = url; link.download = `xitolinos-compras-${month}-${kind}.csv`; link.click(); URL.revokeObjectURL(url);
+    saveLocalFile(`xitolinos-compras-${month}-${kind}.csv`, `﻿${toShoppingCsv(currentList)}`, 'text/csv;charset=utf-8').catch(error => onToast(error.message));
   }
   return <><header className="page-title shopping-title"><div><span className="eyebrow">PLANEJAMENTO DO DIA A DIA</span><h1>Compras</h1>{shoppingOnly && <p className="shopping-scope-note">Conta de consulta: acesso somente à lista compartilhada.</p>}<p>Lista, previsão e histórico ficam salvos no perfil local.</p></div><label className="shopping-month">Mês<input aria-label="Mês da lista" type="month" value={month} onChange={event => onMonthChange(event.target.value)}/></label></header>
     <div className="shopping-tabs" role="group" aria-label="Tipo de lista">{[['market', 'Mercado'], ['pharmacy', 'Farmácia'], ['other', 'Outras compras']].map(([value, label]) => <button key={value} className={kind === value ? 'active' : ''} aria-pressed={kind === value} onClick={() => setKind(value)}>{label}</button>)}</div>
@@ -467,7 +466,7 @@ export default function App() {
   const [session, setSession] = useState(() => JSON.parse(localStorage.getItem('xitolinos-session') || 'null'));
   const [unlocked, setUnlocked] = useState(false);
   const [data, setData] = useState(null);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(todayDateString().slice(0, 7));
   const [page, setPageState] = useState('dashboard');
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');

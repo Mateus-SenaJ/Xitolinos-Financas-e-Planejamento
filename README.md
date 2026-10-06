@@ -7,6 +7,7 @@ Aplicativo pessoal de controle financeiro local, com interface React, API Strapi
 - Backend: Strapi 5 + MySQL 8.4 + JavaScript.
 - Frontend: React + Vite + JavaScript.
 - Desktop: Electron e uma instância local do aplicativo.
+- Android: Capacitor, interface React compartilhada e SQLite no aparelho.
 - Dados de entrada: migração de SQLite existente, somente leitura e executada uma vez.
 
 ## Começar
@@ -24,5 +25,6 @@ A interface usa o manual visual Xitolinos e funciona sem fontes externas. Compon
 ## Mais informações
 
 - [`docs/INTEGRACOES.md`](docs/INTEGRACOES.md): Stripe, documentos, segurança e itens que dependem de rede.
+- [`docs/ANDROID_READINESS.md`](docs/ANDROID_READINESS.md): construção do APK, módulos Android e limites de sincronização.
 - [`docs/JORNADAS.md`](docs/JORNADAS.md): roteiro de jornada e tamanhos de tela.
 - [`.livro de histórias/README.md`](.livro%20de%20hist%C3%B3rias/README.md): decisões confirmadas pelo usuário.

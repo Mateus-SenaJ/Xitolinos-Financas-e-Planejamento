@@ -1,20 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import { api } from './api.js';
+import { api, authenticateNativeBiometry, checkNativeBiometry } from './api.js';
 import { Icon } from './icons.jsx';
 
 export default function BiometricSettings({ token, viewer, onToast }) {
   const [security, setSecurity] = useState(null);
   const [supported, setSupported] = useState(false);
+  const [nativeAndroid, setNativeAndroid] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    api('/finance/security/status', { token, sensitive: false }).then(setSecurity).catch(error => onToast(error.message));
-    import('@simplewebauthn/browser').then(module => setSupported(module.browserSupportsWebAuthn())).catch(() => setSupported(false));
+    let active = true;
+    Promise.all([
+      api('/finance/security/status', { token, sensitive: false }),
+      import('@capacitor/core').then(({ Capacitor }) => Capacitor.isNativePlatform()),
+      import('@simplewebauthn/browser').then(module => module.browserSupportsWebAuthn())
+    ]).then(async ([status, isNative, webAuthnSupported]) => {
+      if (!active) return;
+      setNativeAndroid(isNative);
+      setSecurity(status);
+      if (isNative) setSupported((await checkNativeBiometry()).isAvailable);
+      else setSupported(webAuthnSupported);
+    }).catch(error => { if (active) onToast(error.message); });
+    return () => { active = false; };
   }, [token]);
 
   async function register() {
     setBusy(true);
     try {
       const options = await api('/finance/security/registration/options', { token, sensitive: false });
+      if (options.nativeBiometric) {
+        const available = await checkNativeBiometry();
+        if (!available.isAvailable) throw new Error(available.reason || 'Configure uma biometria nas definições do Android antes de ativá-la.');
+        await authenticateNativeBiometry('Ative a biometria do Xitolinos neste aparelho.');
+        const result = await api('/finance/security/registration/verify', { token, method: 'POST', body: JSON.stringify({ native: true, deviceName: 'Este aparelho' }) });
+        setSecurity({ enabled: true, credentialCount: result.credentialCount, credentials: [{ id: 'android-device', deviceName: 'Este aparelho' }], nativeBiometric: true });
+        onToast(result.message);
+        return;
+      }
       const { startRegistration } = await import('@simplewebauthn/browser');
       const credential = await startRegistration({ optionsJSON: options });
       const result = await api('/finance/security/registration/verify', { token, method: 'POST', body: JSON.stringify({ credential, deviceName: 'Este dispositivo' }) });
@@ -36,5 +57,5 @@ export default function BiometricSettings({ token, viewer, onToast }) {
     finally { setBusy(false); }
   }
 
-  return <section className="surface biometric-panel"><span className="biometric-icon"><Icon name="reserve"/></span><div className="biometric-main"><span className="eyebrow">SEGURANÇA DO DISPOSITIVO</span><h2>Biometria e Windows Hello</h2><p>Confirma a entrada na sessão e operações que alteram o histórico ou exportam seus dados. O aparelho guarda a credencial; o Xitolinos armazena somente a chave pública.</p>{security === null ? <small>Verificando o dispositivo local…</small> : security.enabled ? <div className="credential-list"><span className="security-enabled"><i/>Ativa neste aparelho · confirmação obrigatória</span>{(security.credentials || []).map(credential => <div className="credential-row" key={credential.id}><span>{credential.deviceName || 'Dispositivo local'}</span>{!viewer && <button className="button button-small" onClick={() => remove(credential)} disabled={busy}>Remover com senha</button>}</div>)}</div> : <small>A biometria ainda não está cadastrada neste perfil.</small>}</div>{!viewer && !security?.enabled && <button className="button button-primary" onClick={register} disabled={busy || !supported}>{busy ? 'Aguardando o aparelho…' : supported ? 'Cadastrar biometria' : 'Biometria não disponível'}</button>}</section>;
+  return <section className="surface biometric-panel"><span className="biometric-icon"><Icon name="reserve"/></span><div className="biometric-main"><span className="eyebrow">SEGURANÇA DO DISPOSITIVO</span><h2>{nativeAndroid ? 'Biometria do aparelho' : 'Biometria e Windows Hello'}</h2><p>Confirma a entrada na sessão e operações que alteram o histórico ou exportam seus dados. A confirmação acontece neste aparelho e os dados financeiros permanecem locais.</p>{security === null ? <small>Verificando o dispositivo local…</small> : security.enabled ? <div className="credential-list"><span className="security-enabled"><i/>Ativa neste aparelho · confirmação obrigatória</span>{(security.credentials || []).map(credential => <div className="credential-row" key={credential.id}><span>{credential.deviceName || 'Dispositivo local'}</span>{!viewer && <button className="button button-small" onClick={() => remove(credential)} disabled={busy}>Remover com senha</button>}</div>)}</div> : <small>A biometria ainda não está cadastrada neste perfil.</small>}</div>{!viewer && !security?.enabled && <button className="button button-primary" onClick={register} disabled={busy || !supported}>{busy ? 'Aguardando o aparelho…' : supported ? 'Cadastrar biometria' : 'Biometria não disponível'}</button>}</section>;
 }

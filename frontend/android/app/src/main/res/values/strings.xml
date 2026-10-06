@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Xitolinos Planejamento</string>
+    <string name="title_activity_main">Xitolinos Planejamento</string>
+    <string name="package_name">br.com.xitolinos.planejamento</string>
+    <string name="custom_url_scheme">br.com.xitolinos.planejamento</string>
+</resources>

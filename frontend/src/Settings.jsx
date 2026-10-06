@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from './api.js';
+import { api, saveLocalFile } from './api.js';
 import { Icon } from './icons.jsx';
 import BiometricSettings from './BiometricSettings.jsx';
 
@@ -45,11 +45,7 @@ export default function Settings({ data, billing, token, onRefresh, onToast, vie
     try {
       const result = await api(`/finance/export?format=${format}&month=${data.month}`, { token });
       const content = format === 'backup' ? JSON.stringify(result, null, 2) : result.text;
-      const blob = new Blob([content], { type: format === 'backup' ? 'application/json' : 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url;
-      link.download = format === 'backup' ? 'xitolinos-backup.json' : `xitolinos-${data.month}.txt`;
-      link.click(); URL.revokeObjectURL(url);
+      await saveLocalFile(format === 'backup' ? 'xitolinos-backup.json' : `xitolinos-${data.month}.txt`, content, format === 'backup' ? 'application/json' : 'text/plain;charset=utf-8');
     } catch (error) { onToast(error.message); }
     finally { setBusy(false); }
   }

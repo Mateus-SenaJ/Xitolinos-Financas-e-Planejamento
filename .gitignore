@@ -14,6 +14,7 @@ dist-installer/
 test-results/
 playwright-report/
 frontend/dist/
+frontend/dist-android/
 backend/dist/
 *.pid
 debug.log

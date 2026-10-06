@@ -1,6 +1,7 @@
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:1337';
+const androidBuild = import.meta.env.MODE === 'android';
 
 async function request(path, { token, ...options } = {}) {
   const response = await fetch(`${apiBase}/api${path}`, {
@@ -17,6 +18,12 @@ async function request(path, { token, ...options } = {}) {
 }
 
 export async function authenticateDevice(token) {
+  if (androidBuild) {
+    const status = await api('/finance/security/status', { token, sensitive: false });
+    if (!status.enabled) return { enabled: false };
+    await authenticateNativeBiometry('Confirme o acesso ao seu planejamento financeiro.');
+    return { enabled: true, proof: 'native' };
+  }
   const status = await request('/finance/security/status', { token });
   if (!status.enabled) return { enabled: false };
   const { enabled, options } = await request('/finance/security/authentication/options', { token });
@@ -28,6 +35,16 @@ export async function authenticateDevice(token) {
 }
 
 export async function api(path, { token, sensitive = true, ...options } = {}) {
+  if (androidBuild) {
+    const { api: mobileApi } = await import('./mobile/api.js');
+    const method = String(options.method || 'GET').toUpperCase();
+    const requiresConfirmation = sensitive && token && (method !== 'GET' || path.startsWith('/finance/export'));
+    if (requiresConfirmation) {
+      const status = await mobileApi('/finance/security/status', { token, sensitive: false });
+      if (status.enabled) await authenticateDevice(token);
+    }
+    return mobileApi(path, { token, sensitive, ...options });
+  }
   const method = String(options.method || 'GET').toUpperCase();
   const needsDeviceConfirmation = sensitive && token && (method !== 'GET' || path.startsWith('/finance/export'));
   if (needsDeviceConfirmation) {
@@ -41,6 +58,10 @@ export async function api(path, { token, sensitive = true, ...options } = {}) {
 }
 
 export async function login(identifier, password) {
+  if (androidBuild) {
+    const { login: mobileLogin } = await import('./mobile/api.js');
+    return mobileLogin(identifier, password);
+  }
   const response = await fetch(`${apiBase}/api/auth/local`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier, password })
@@ -48,6 +69,47 @@ export async function login(identifier, password) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error?.message || 'Confira o usuário e a senha.');
   return { token: data.jwt, user: data.user };
+}
+
+export async function checkNativeBiometry() {
+  if (!androidBuild) return { isAvailable: false, reason: 'Este recurso está disponível no aplicativo Android.' };
+  const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  return BiometricAuth.checkBiometry();
+}
+
+export async function authenticateNativeBiometry(reason = 'Confirme sua identidade para continuar.') {
+  if (!androidBuild) throw new Error('A biometria nativa está disponível somente no aplicativo Android.');
+  const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  await BiometricAuth.authenticate({
+    reason,
+    allowDeviceCredential: true,
+    androidTitle: 'Acesso protegido',
+    androidSubtitle: 'Autentique-se para continuar'
+  });
+}
+
+export async function saveLocalFile(fileName, content, mimeType) {
+  if (!androidBuild) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const safeName = String(fileName).replace(/[^\p{L}\p{N}._-]+/gu, '-');
+  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+  const { Share } = await import('@capacitor/share');
+  const file = await Filesystem.writeFile({
+    path: `exports/${Date.now()}-${safeName}`,
+    data: String(content),
+    directory: Directory.Cache,
+    encoding: Encoding.UTF8,
+    recursive: true
+  });
+  await Share.share({ title: fileName, text: 'Arquivo exportado localmente pelo Xitolinos.', files: [file.uri], dialogTitle: 'Compartilhar arquivo' });
 }
 
 export async function parseStatement(file) {

@@ -1,0 +1,8 @@
+{
+  "appId": "br.com.xitolinos.planejamento",
+  "appName": "Xitolinos Planejamento",
+  "webDir": "dist-android",
+  "android": {
+    "allowMixedContent": false
+  }
+}

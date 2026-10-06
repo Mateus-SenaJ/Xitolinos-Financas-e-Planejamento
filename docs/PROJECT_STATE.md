@@ -9,6 +9,8 @@ A interface inicial inclui cartões verdes de destaque, controle para ocultar sa
 
 O módulo local de compras oferece listas por mês e tipo, catálogo genérico, histórico, estoque, previsão e CSV no dispositivo. A importação não cria uma despesa por padrão; a contabilização exige ação explícita e o lançamento associado impede edições posteriores da lista.
 
+A versão Android empacota a mesma interface React com Capacitor, usa SQLite no aparelho e mantém os módulos financeiros e de compras locais. Ela não sincroniza automaticamente com o site; dados passam entre versões por backup JSON manual. A toolchain e a validação do APK de depuração estão descritas em `ANDROID_READINESS.md`.
+
 Dados SQLite/JSON anteriores são preservados e importados uma vez para o perfil local. A cobrança Stripe, notificações fora do aplicativo, OCR de PDF escaneado, Open Finance e sincronização pela rede não estão ativos no modo local.
 
 Para os comandos e a cobertura de validação, consulte `EXECUCAO_LOCAL.md` e `QA.md`.

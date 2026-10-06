@@ -6,6 +6,7 @@
 - API: Strapi 5 e JavaScript.
 - Banco: MySQL 8.4 local e persistente.
 - Desktop: Electron, que inicia e encerra a interface, a API e o banco local.
+- Android: Capacitor, a mesma interface React, um adaptador financeiro local e SQLite no aparelho.
 - Testes: Node.js, Vitest e Playwright.
 
 TypeScript e outros backends não fazem parte desta arquitetura. O produto é para finanças pessoais; não existe cadastro, isolamento ou regra de multi-tenancy por escola.
@@ -26,10 +27,14 @@ O Electron abre a interface React e inicia os serviços locais. A instalação a
 
 Cada usuário autenticado é proprietário dos próprios registros. O perfil proprietário cria e altera informações; o perfil de consulta recebe respostas somente de leitura. A API aplica a autorização no servidor, não apenas ocultando controles da interface. Não há isolamento por escola ou organização.
 
+## Aplicativo Android
+
+O invólucro em `frontend/android/` reutiliza a interface React e seu CSS responsivo. No Android, a camada de API usa `frontend/src/mobile/api.js` e persiste os dados em SQLite local por Capacitor. A aplicação não chama Strapi/MySQL pela rede. A conta e a base do Android são independentes das da versão web; a transferência é manual por backup JSON local.
+
 
 ## Módulo de compras
 
-A versão React/Strapi armazena listas e estoque na coleção local `shopping_states`, com escopo pelo perfil autenticado. As transações podem guardar `spendingContext` (`routine`/`extra`) e a chave da lista contabilizada para evitar repetição em novas tentativas. O perfil de consulta não pode escrever pela API. A lista de compras e seu CSV permanecem locais; não há sincronização entre aparelhos. A implementação Android Kivy/SQLite ainda não consome essa coleção nem oferece paridade dessa funcionalidade.
+A versão React/Strapi armazena listas e estoque na coleção local `shopping_states`, com escopo pelo perfil autenticado. O Android mantém seu estado de compras no SQLite local. As transações podem guardar `spendingContext` (`routine`/`extra`) e a chave da lista contabilizada para evitar repetição em novas tentativas. O perfil de consulta não pode escrever pela API. Lista, estoque e CSV permanecem locais; não há sincronização entre aparelhos.
 
 ## Migração local
 
@@ -37,4 +42,4 @@ Na primeira inicialização, o backend pode importar `data/finance.sqlite` e `da
 
 ## Limites de rede
 
-React, Strapi e MySQL vinculam-se ao loopback. Não há CDN, fonte remota, sincronização automática, chamadas a instituições financeiras ou envio de documentos. O uso de Stripe está desligado no modo local.
+React, Strapi e MySQL vinculam-se ao loopback. O pacote Android também opera sem acessar a rede. Não há CDN, fonte remota, sincronização automática, chamadas a instituições financeiras ou envio de documentos. O uso de Stripe está desligado no modo local.

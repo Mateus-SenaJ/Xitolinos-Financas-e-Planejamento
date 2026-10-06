@@ -8,3 +8,4 @@
 6. Stripe fica preparado para assinatura do aplicativo, mas a cobrança e os webhooks permanecem desligados até haver uma versão conectada à Internet.
 7. Recomendações de gasto usam regras financeiras fixas e exibem a justificativa baseada nos dados cadastrados.
 8. Stripe atende apenas a assinatura do Xitolinos. Connect não é usado porque o produto não recebe pagamentos em nome de vendedores nem distribui repasses.
+9. O app Android é um invólucro Capacitor da interface React com SQLite local. Ele compartilha código e identidade visual com o site, mas não sincroniza os dados com Strapi/MySQL; a transferência entre dispositivos usa backup JSON manual.
