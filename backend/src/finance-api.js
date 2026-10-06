@@ -22,6 +22,15 @@ function assertFinanceAccess(user, ctx, write) {
 }
 
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
+const restorableTransactionStatuses = new Set(['paid', 'pending', 'planned', 'settled']);
+function getStatusBeforeDelete(row, referenceDate = today()) {
+  if (restorableTransactionStatuses.has(row.status)) return row.status;
+  if (restorableTransactionStatuses.has(row.statusBeforeDelete)) return row.statusBeforeDelete;
+  return row.date <= referenceDate ? 'paid' : 'planned';
+}
+function getRestoredTransactionStatus(row, referenceDate = today()) {
+  return restorableTransactionStatuses.has(row.statusBeforeDelete) ? row.statusBeforeDelete : row.date <= referenceDate ? 'paid' : 'planned';
+}
 const money = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
 
 function buildNotifications({ today: date, preferences = {}, cardAlerts = [], cards = [], transactions = [], incomeSources = [], closes = [] }) {
@@ -115,6 +124,41 @@ function amount(value) {
   return cents;
 }
 
+function nonNegativeCents(value, label) {
+  const cents = Number(value);
+  if (!Number.isSafeInteger(cents) || cents < 0) throw new errors.ValidationError(`${label} precisa ser zero ou um valor positivo em centavos.`);
+  return cents;
+}
+
+function validateReceiptData(value) {
+  if (value == null) return null;
+  if (!value || typeof value !== 'object' || !['image/jpeg', 'application/pdf'].includes(value.mimeType)
+    || typeof value.dataUrl !== 'string' || !value.dataUrl.startsWith(`data:${value.mimeType};base64,`)
+    || Buffer.byteLength(value.dataUrl, 'utf8') > 2_900_000) {
+    throw new errors.ValidationError('O comprovante deve ser uma imagem ou PDF local de até 2 MB.');
+  }
+  const extracted = value.extracted && typeof value.extracted === 'object' ? value.extracted : {};
+  return {
+    fileName: String(value.fileName || 'comprovante').slice(0, 180), mimeType: value.mimeType,
+    dataUrl: value.dataUrl, confidence: Math.max(0, Math.min(100, Number(value.confidence) || 0)),
+    extracted: {
+      description: String(extracted.description || '').slice(0, 100),
+      date: /^\d{4}-\d{2}-\d{2}$/.test(String(extracted.date || '')) ? extracted.date : '',
+      amountCents: Number.isSafeInteger(Number(extracted.amountCents)) ? Number(extracted.amountCents) : null,
+      transactionCode: String(extracted.transactionCode || '').slice(0, 80),
+      receiptNumber: String(extracted.receiptNumber || '').slice(0, 60)
+    }
+  };
+}
+
+function auditReceiptData(value) {
+  return value ? { ...value, dataUrl: '[comprovante armazenado localmente]' } : value;
+}
+
+function auditTransaction(row) {
+  return row ? { ...row, receiptData: auditReceiptData(row.receiptData) } : row;
+}
+
 function isoDate(value, label = 'Data') {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) throw new errors.ValidationError(`${label} inválida.`);
   return value;
@@ -132,7 +176,10 @@ function flatTransaction(row) {
     installmentCount: row.installmentCount, categoryId: relationId(row.category),
     category: row.category?.name || 'Outros', accountId: relationId(row.account), accountName: accountName(row),
     cardId: relationId(row.card), cardName: row.card?.name || '', recurrenceId: relationId(row.recurrence),
-    incomeSourceId: relationId(row.incomeSource), memo: row.memo || '', deletedAt: row.deletedAt || null, paidAt: row.paidAt || null
+    incomeSourceId: relationId(row.incomeSource), memo: row.memo || '',
+    hasReceipt: Boolean(row.receiptData), receiptFileName: row.receiptData?.fileName || '',
+    receiptExtracted: row.receiptData?.extracted || null,
+    deletedAt: row.deletedAt || null, paidAt: row.paidAt || null
   };
 }
 
@@ -192,16 +239,19 @@ function projectionsFor(month, transactions, recurrences, incomeSources) {
 
 function liquidBalanceBefore(cutoff, accounts, transactions) {
   const liquid = new Set(accounts.filter(item => item.isLiquid && item.status !== 'archived').map(item => item.id));
-  let balance = accounts.filter(item => liquid.has(item.id)).reduce((sum, item) => sum + Number(item.openingBalanceCents || 0), 0);
+  const accountById = new Map(accounts.map(item => [item.id, item]));
+  let balance = accounts.filter(item => liquid.has(item.id) && (!item.openingBalanceDate || item.openingBalanceDate < cutoff)).reduce((sum, item) => sum + Number(item.openingBalanceCents || 0), 0);
   for (const row of transactions) {
     if (row.status !== 'paid' || row.status === 'voided') continue;
     const date = row.paidAt || (row.method === 'card' ? row.dueDate || row.date : row.date);
     if (!date || date >= cutoff) continue;
-    if (row.type === 'income' && liquid.has(relationId(row.account))) balance += row.amountCents;
-    if (row.type === 'expense' && liquid.has(relationId(row.account))) balance -= row.amountCents;
+    const accountId = relationId(row.account), counterpartyId = relationId(row.counterpartyAccount);
+    const afterOpening = id => !accountById.get(id)?.openingBalanceDate || date >= accountById.get(id).openingBalanceDate;
+    if (row.type === 'income' && liquid.has(accountId) && afterOpening(accountId)) balance += row.amountCents;
+    if (row.type === 'expense' && liquid.has(accountId) && afterOpening(accountId)) balance -= row.amountCents;
     if (row.type === 'transfer') {
-      if (liquid.has(relationId(row.account))) balance -= row.amountCents;
-      if (liquid.has(relationId(row.counterpartyAccount))) balance += row.amountCents;
+      if (liquid.has(accountId) && afterOpening(accountId)) balance -= row.amountCents;
+      if (liquid.has(counterpartyId) && afterOpening(counterpartyId)) balance += row.amountCents;
     }
   }
   return balance;
@@ -228,6 +278,17 @@ async function dashboardData(strapi, userId, selectedMonth) {
     ownedRows(strapi, 'month-close', userId, { month: 'desc' }), ownedRows(strapi, 'merchant-rule', userId, { canonicalName: 'asc' })
   ]);
   const transactions = transactionsRaw.map(flatTransaction);
+  const historyMonths = Array.from({ length: 12 }, (_, index) => shiftMonth(today().slice(0, 7), index - 11));
+  const historyMap = Object.fromEntries(historyMonths.map(period => [period, { month: period, totalCents: 0, routineCents: 0, extraCents: 0 }]));
+  for (const row of transactionsRaw) {
+    if (row.type !== 'expense' || row.status !== 'paid' || row.deletedAt) continue;
+    const period = monthKey(row.paidAt || row.date);
+    const point = historyMap[period];
+    if (!point) continue;
+    point.totalCents += Number(row.amountCents || 0);
+    if (row.spendingContext === 'extra') point.extraCents += Number(row.amountCents || 0);
+    else point.routineCents += Number(row.amountCents || 0);
+  }
   const accounts = accountsRaw.map(flatRecord);
   const cards = cardsRaw.map(flatRecord);
   const recurrences = recurrencesRaw.map(flatRecord);
@@ -296,10 +357,10 @@ async function dashboardData(strapi, userId, selectedMonth) {
   return {
     month, currentMonth, nextMonth: shiftMonth(currentMonth, 1), currentCashCents,
     totals: { ...summary, expenses: undefined, incomes: undefined },
-    details: rows, categoryTotals: categoryTotals(summary.expenses), budgets: monthBudgets.map(item => ({ ...item, usedCents: used[item.categoryName] || 0 })),
+    details: rows, trash: transactions.filter(row => row.deletedAt), categoryTotals: categoryTotals(summary.expenses), budgets: monthBudgets.map(item => ({ ...item, usedCents: used[item.categoryName] || 0 })),
     accounts, categories: categoriesRaw.map(flatRecord), cards: cardInvoices, recurrences,
     incomeSources, reserves: reserves.map(flatRecord), goals: goals.map(flatRecord), preferences: prefs,
-    monthSummaries, close, cardAlerts, notifications,
+    monthSummaries, spendingHistory: historyMonths.map(period => historyMap[period]), close, cardAlerts, notifications,
     deliverySpending: delivery,
     deliveryRecommendation: {
       month, maximumAmountCents: Math.min(availableForDeliveryCents, deliveryBudgetRemainderCents),
@@ -360,11 +421,11 @@ async function createTransaction(strapi, user, input, extra = {}) {
       counterpartyAccount: destination?.id, category: categoryFallback?.id, card: card?.id,
       recurrence: extra.recurrenceId, incomeSource: extra.incomeSourceId, shoppingImportId: extra.shoppingImportId,
       spendingContext: type === 'expense' && ['routine','extra'].includes(input.spendingContext) ? input.spendingContext : undefined,
-      memo: String(input.memo || '').slice(0, 500), owner: user.id
+      memo: String(input.memo || '').slice(0, 500), receiptData: index === 0 ? validateReceiptData(input.receiptData) : null, owner: user.id
     } });
     created.push(item);
   }
-  await audit(strapi, user, 'create', 'transaction', group || created[0].id, null, created.map(flatTransaction));
+  await audit(strapi, user, 'create', 'transaction', group || created[0].id, null, created.map(row => ({ ...flatTransaction(row), receiptData: auditReceiptData(row.receiptData) })));
   return { items: created.map(flatTransaction), installmentGroup: group };
 }
 
@@ -384,6 +445,32 @@ async function createSchedule(strapi, user, type, input) {
   const row = await strapi.entityService.create(uid(type), { data });
   await audit(strapi, user, 'create', type, row.id, null, row);
   return flatRecord(row);
+}
+
+async function updateSchedule(strapi, user, type, id, input) {
+  const previous = await ownedRecord(strapi, type, user.id, id);
+  const data = {};
+  if (input.name !== undefined) {
+    const name = String(input.name || '').trim();
+    if (!name || name.length > 90) throw new errors.ValidationError('Informe um nome com até 90 caracteres.');
+    data.name = name;
+  }
+  if (input.amountCents !== undefined) data.amountCents = amount(input.amountCents);
+  if (input.frequency !== undefined) {
+    if (!['weekly','fortnightly','monthly','yearly','once'].includes(input.frequency)) throw new errors.ValidationError('Frequência inválida.');
+    data.frequency = type === 'recurrence' && input.frequency === 'once' ? 'monthly' : input.frequency;
+  }
+  if (input.startDate !== undefined) data.startDate = isoDate(input.startDate);
+  if (input.nextDate !== undefined) data.nextDate = isoDate(input.nextDate);
+  if (input.dayOfMonth !== undefined) data.dayOfMonth = Math.max(1, Math.min(31, Number(input.dayOfMonth)));
+  if (input.reminderDaysBefore !== undefined && type === 'income-source') data.reminderDaysBefore = Math.max(0, Math.min(30, Number(input.reminderDaysBefore)));
+  if (input.categoryId !== undefined) data.category = (await relatedOwned(strapi, 'category', user.id, input.categoryId))?.id;
+  if (input.accountId !== undefined) data.account = (await relatedOwned(strapi, 'account', user.id, input.accountId))?.id;
+  if (input.method !== undefined && type === 'recurrence') data.method = ['account','pix','cash','debit','card'].includes(input.method) ? input.method : 'account';
+  if (input.active !== undefined) data.active = Boolean(input.active);
+  const item = await strapi.entityService.update(uid(type), previous.id, { data });
+  await audit(strapi, user, 'update', type, item.id, previous, item);
+  return flatRecord(item);
 }
 
 async function incrementDate(value, frequency) {
@@ -433,7 +520,7 @@ const backupFields = {
   'merchant-rule': ['alias','normalizedAlias','canonicalName','category'],
   'desired-purchase': ['name','amountCents','urgency','desiredDate','category','status'],
   'shopping-state': ['lists','stock'],
-  transaction: ['description','normalizedMerchant','type','amountCents','date','dueDate','purchaseDate','paidAt','method','status','source','installmentGroup','installmentNumber','installmentCount','memo','deletedAt','shoppingImportId','spendingContext','account','counterpartyAccount','category','card','recurrence','incomeSource']
+  transaction: ['description','normalizedMerchant','type','amountCents','date','dueDate','purchaseDate','paidAt','method','status','source','installmentGroup','installmentNumber','installmentCount','memo','receiptData','statusBeforeDelete','deletedAt','shoppingImportId','spendingContext','account','counterpartyAccount','category','card','recurrence','incomeSource']
 };
 const backupRelations = {
   category: { parent: 'category' }, card: { account: 'account' },
@@ -658,11 +745,26 @@ function makeActions(strapi) {
       if (!String(body.name || '').trim()) throw new errors.ValidationError('Informe o nome da conta.');
       const row = await strapi.entityService.create(uid('account'), { data: {
         name: String(body.name).trim().slice(0, 60), institution: String(body.institution || '').slice(0, 60),
-        type: body.type || 'checking', openingBalanceCents: Number(body.openingBalanceCents || 0),
+        type: body.type || 'checking', openingBalanceCents: Number(body.openingBalanceCents || 0), openingBalanceDate: body.openingBalanceDate ? isoDate(body.openingBalanceDate) : undefined,
         isLiquid: body.isLiquid !== false, status: 'active', owner: user.id
       } });
       await audit(strapi, user, 'create', 'account', row.id, null, row);
       return { item: flatRecord(row) };
+    }),
+    updateAccount: ctx => withUser(ctx, true, async user => {
+      const previous = await ownedRecord(strapi, 'account', user.id, ctx.params.id);
+      const body = ctx.request.body || {};
+      const data = {};
+      if (body.name !== undefined) {
+        const name = String(body.name || '').trim();
+        if (!name || name.length > 60) throw new errors.ValidationError('Informe o nome da conta.');
+        data.name = name;
+      }
+      if (body.openingBalanceCents !== undefined) data.openingBalanceCents = nonNegativeCents(body.openingBalanceCents, 'O saldo inicial');
+      if (body.openingBalanceDate !== undefined) data.openingBalanceDate = isoDate(body.openingBalanceDate);
+      const item = await strapi.entityService.update(uid('account'), previous.id, { data });
+      await audit(strapi, user, 'update', 'account', item.id, previous, item);
+      return { item: flatRecord(item) };
     }),
     categories: ctx => withUser(ctx, false, async user => ({ items: (await ownedRows(strapi, 'category', user.id, { name: 'asc' })).map(flatRecord) })),
     createCategory: ctx => withUser(ctx, true, async user => {
@@ -674,6 +776,14 @@ function makeActions(strapi) {
       return { item: flatRecord(row) };
     }),
     createTransaction: ctx => withUser(ctx, true, user => createTransaction(strapi, user, ctx.request.body || {})),
+    resetTransactions: ctx => withUser(ctx, true, async user => {
+      const rows = await ownedRows(strapi, 'transaction', user.id);
+      const active = rows.filter(row => !row.deletedAt && row.status !== 'voided');
+      const deletedAt = new Date().toISOString();
+      for (const row of active) await strapi.entityService.update(uid('transaction'), row.id, { data: { statusBeforeDelete: getStatusBeforeDelete(row), status: 'voided', deletedAt } });
+      await audit(strapi, user, 'reset-to-trash', 'transaction', user.id, { count: active.length }, { deletedCount: active.length });
+      return { deletedCount: active.length };
+    }),
     updateTransaction: ctx => withUser(ctx, true, async user => {
       const previous = await ownedRecord(strapi, 'transaction', user.id, ctx.params.id);
       const input = ctx.request.body || {};
@@ -689,20 +799,28 @@ function makeActions(strapi) {
         update.spendingContext = input.spendingContext;
       }
       if (input.memo !== undefined) update.memo = String(input.memo).slice(0, 500);
+      if (input.receiptData !== undefined) update.receiptData = validateReceiptData(input.receiptData);
       const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: update });
-      await audit(strapi, user, 'update', 'transaction', item.id, previous, item);
+      await audit(strapi, user, 'update', 'transaction', item.id, auditTransaction(previous), auditTransaction(item));
       return { item: flatTransaction(item) };
+    }),
+    getTransactionReceipt: ctx => withUser(ctx, false, async user => {
+      const row = await ownedRecord(strapi, 'transaction', user.id, ctx.params.id);
+      if (!row.receiptData) throw new errors.NotFoundError('Este lançamento não tem comprovante anexado.');
+      return { receipt: row.receiptData };
     }),
     deleteTransaction: ctx => withUser(ctx, true, async user => {
       const previous = await ownedRecord(strapi, 'transaction', user.id, ctx.params.id);
-      const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: { status: 'voided', deletedAt: new Date().toISOString() } });
-      await audit(strapi, user, 'trash', 'transaction', item.id, previous, item);
+      const statusBeforeDelete = getStatusBeforeDelete(previous);
+      const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: { statusBeforeDelete, status: 'voided', deletedAt: new Date().toISOString() } });
+      await audit(strapi, user, 'trash', 'transaction', item.id, auditTransaction(previous), auditTransaction(item));
       return { item: flatTransaction(item) };
     }),
     restoreTransaction: ctx => withUser(ctx, true, async user => {
       const previous = await ownedRecord(strapi, 'transaction', user.id, ctx.params.id);
-      const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: { status: previous.date <= today() ? 'paid' : 'planned', deletedAt: null } });
-      await audit(strapi, user, 'restore', 'transaction', item.id, previous, item);
+      const status = getRestoredTransactionStatus(previous);
+      const item = await strapi.entityService.update(uid('transaction'), previous.id, { data: { status, statusBeforeDelete: null, deletedAt: null } });
+      await audit(strapi, user, 'restore', 'transaction', item.id, auditTransaction(previous), auditTransaction(item));
       return { item: flatTransaction(item) };
     }),
     cards: ctx => withUser(ctx, false, async user => ({ items: (await ownedRows(strapi, 'card', user.id, { name: 'asc' })).map(flatRecord) })),
@@ -714,6 +832,24 @@ function makeActions(strapi) {
       const row = await strapi.entityService.create(uid('card'), { data: { name: String(body.name || 'Cartão').trim().slice(0, 60), network: String(body.network || '').slice(0, 30), lastFour: String(body.lastFour || '').slice(-4), closingDay, dueDay, limitCents: Number(body.limitCents || 0), account: account.id, active: true, owner: user.id } });
       await audit(strapi, user, 'create', 'card', row.id, null, row);
       return { item: flatRecord(row) };
+    }),
+    updateCard: ctx => withUser(ctx, true, async user => {
+      const previous = await ownedRecord(strapi, 'card', user.id, ctx.params.id);
+      const body = ctx.request.body || {};
+      const data = {};
+      if (body.name !== undefined) { const name = String(body.name || '').trim(); if (!name || name.length > 60) throw new errors.ValidationError('Informe o nome do cartão.'); data.name = name; }
+      for (const field of ['closingDay','dueDay']) if (body[field] !== undefined) {
+        const day = Number(body[field]);
+        if (!Number.isInteger(day) || day < 1 || day > 31) throw new errors.ValidationError('Fechamento e vencimento precisam ser dias entre 1 e 31.');
+        data[field] = day;
+      }
+      if (body.limitCents !== undefined) data.limitCents = nonNegativeCents(body.limitCents, 'O limite do cartão');
+      if (body.network !== undefined) data.network = String(body.network || '').slice(0, 30);
+      if (body.lastFour !== undefined) data.lastFour = String(body.lastFour || '').slice(-4);
+      if (body.accountId !== undefined) data.account = (await relatedOwned(strapi, 'account', user.id, body.accountId))?.id;
+      const item = await strapi.entityService.update(uid('card'), previous.id, { data });
+      await audit(strapi, user, 'update', 'card', item.id, previous, item);
+      return { item: flatRecord(item) };
     }),
     settleCard: ctx => withUser(ctx, true, async user => {
       const card = await ownedRecord(strapi, 'card', user.id, ctx.params.id);
@@ -732,16 +868,17 @@ function makeActions(strapi) {
       const groupRows = rows.filter(row => row.installmentGroup === group && row.status !== 'voided');
       if (!groupRows.length) throw new errors.NotFoundError('Parcelamento não encontrado.');
       const remaining = groupRows.filter(row => row.status !== 'paid');
-      for (const row of remaining) await strapi.entityService.update(uid('transaction'), row.id, { data: { status: 'voided', deletedAt: new Date().toISOString() } });
+      for (const row of remaining) await strapi.entityService.update(uid('transaction'), row.id, { data: { statusBeforeDelete: getStatusBeforeDelete(row), status: 'voided', deletedAt: new Date().toISOString() } });
       const created = await createTransaction(strapi, user, {
         description: `Quitação: ${groupRows[0].description}`, type: 'expense', amountCents: paidAmountCents,
         date: today(), method: 'account', categoryId: relationId(groupRows[0].category), accountId: relationId(groupRows[0].account)
       }, { source: 'manual' });
-      await audit(strapi, user, 'settle-installments', 'transaction', group, groupRows, { paidAmountCents, canceledCount: remaining.length });
+      await audit(strapi, user, 'settle-installments', 'transaction', group, groupRows.map(auditTransaction), { paidAmountCents, canceledCount: remaining.length });
       return { items: created.items, canceledCount: remaining.length };
     }),
     recurrences: ctx => withUser(ctx, false, async user => ({ items: (await ownedRows(strapi, 'recurrence', user.id, { name: 'asc' })).map(flatRecord) })),
     createRecurrence: ctx => withUser(ctx, true, user => createSchedule(strapi, user, 'recurrence', ctx.request.body || {}).then(item => ({ item }))),
+    updateRecurrence: ctx => withUser(ctx, true, user => updateSchedule(strapi, user, 'recurrence', ctx.params.id, ctx.request.body || {}).then(item => ({ item }))),
     completeRecurrence: ctx => withUser(ctx, true, async user => {
       const recurrence = await ownedRecord(strapi, 'recurrence', user.id, ctx.params.id);
       const date = isoDate(ctx.request.body?.date || today());
@@ -755,12 +892,13 @@ function makeActions(strapi) {
     }),
     incomeSources: ctx => withUser(ctx, false, async user => ({ items: (await ownedRows(strapi, 'income-source', user.id, { nextDate: 'asc' })).map(flatRecord) })),
     createIncomeSource: ctx => withUser(ctx, true, user => createSchedule(strapi, user, 'income-source', ctx.request.body || {}).then(item => ({ item }))),
+    updateIncomeSource: ctx => withUser(ctx, true, user => updateSchedule(strapi, user, 'income-source', ctx.params.id, ctx.request.body || {}).then(item => ({ item }))),
     receiveIncome: ctx => withUser(ctx, true, async user => {
       const source = await ownedRecord(strapi, 'income-source', user.id, ctx.params.id);
       const date = isoDate(ctx.request.body?.date || today());
       const result = await createTransaction(strapi, user, {
         description: source.name, type: 'income', amountCents: Number(ctx.request.body?.amountCents || source.amountCents), date,
-        method: 'account', categoryId: relationId(source.category), accountId: relationId(source.account)
+        method: 'account', categoryId: relationId(source.category), accountId: relationId(source.account), receiptData: ctx.request.body?.receiptData
       }, { incomeSourceId: source.id, source: 'manual' });
       const nextDate = source.frequency === 'once' ? source.nextDate : await incrementDate(source.nextDate, source.frequency);
       const occurrencesRemaining = source.occurrencesRemaining ? Math.max(0, source.occurrencesRemaining - 1) : null;
@@ -1018,4 +1156,4 @@ function makeActions(strapi) {
 
 async function seedPurchaseRemainder() { return null; }
 
-module.exports = { makeActions, buildNotifications, assertFinanceAccess, isSharedShoppingViewer, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate };
+module.exports = { makeActions, buildNotifications, assertFinanceAccess, isSharedShoppingViewer, normalizeMerchant, installments, recurringOccurrences, classifyImportedRows, totalsForMonth, validMonth, monthDate, shiftMonth, parseDateFromText, autoProjectionDateFor, incrementDate, getStatusBeforeDelete, getRestoredTransactionStatus, auditTransaction };

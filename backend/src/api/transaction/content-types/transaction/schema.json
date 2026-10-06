@@ -103,6 +103,18 @@
     "memo": {
       "type": "text"
     },
+    "receiptData": {
+      "type": "json"
+    },
+    "statusBeforeDelete": {
+      "type": "enumeration",
+      "enum": [
+        "paid",
+        "pending",
+        "planned",
+        "settled"
+      ]
+    },
     "deletedAt": {
       "type": "datetime"
     },

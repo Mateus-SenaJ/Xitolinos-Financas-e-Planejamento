@@ -1,0 +1,1 @@
+﻿Portuguese traineddata: @tesseract.js-data/por 1.0.0, MIT License. Source: https://github.com/naptha/tessdata

@@ -25,6 +25,7 @@ const paths = {
   download: <><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></>,
   check: <><path d="m5 12 4 4L19 6"/></>,
   close: <><path d="m6 6 12 12M18 6 6 18"/></>,
+  trash: <><path d="M3 6h18M8 6V4h8v2m3 0-.8 14H5.8L5 6m4 4v6m6-6v6"/></>,
   menu: <><path d="M4 6h16M4 12h16M4 18h16"/></>,
   file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></>
 };

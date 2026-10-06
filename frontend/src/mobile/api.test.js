@@ -87,13 +87,23 @@ describe('API local do aplicativo Android', () => {
     expect(row.status).toBe('planned');
     expect(row.spendingContext).toBe('extra');
 
-    await api(`/finance/transactions/${row.id}`, { token: session.token, method: 'PUT', body: JSON.stringify({ description: 'Compra revisada', spendingContext: 'routine' }) });
+    await api(`/finance/transactions/${row.id}`, { token: session.token, method: 'PUT', body: JSON.stringify({ description: 'Compra revisada', spendingContext: 'routine', status: 'pending', receiptData: { fileName: 'recibo.jpg', mimeType: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,dGVzdA==' } }) });
     expect(mockStore.state.transactions.find(item => item.id === row.id)).toMatchObject({ description: 'Compra revisada', amountCents: 12345, spendingContext: 'routine' });
 
     await api(`/finance/transactions/${row.id}/delete`, { token: session.token, method: 'POST', body: '{}' });
     expect(mockStore.state.transactions.find(item => item.id === row.id).status).toBe('voided');
+    const deleteAudit = mockStore.state.auditEvents.find(event => event.action === 'delete' && event.entityId === String(row.id));
+    expect(deleteAudit.beforeJson.receiptData.dataUrl).toBe('[comprovante armazenado localmente]');
+    expect(deleteAudit.afterJson.receiptData.dataUrl).toBe('[comprovante armazenado localmente]');
     await api(`/finance/transactions/${row.id}/restore`, { token: session.token, method: 'POST', body: '{}' });
-    expect(mockStore.state.transactions.find(item => item.id === row.id).status).toBe('planned');
+    expect(mockStore.state.transactions.find(item => item.id === row.id).status).toBe('pending');
+    const restoreAudit = mockStore.state.auditEvents.find(event => event.action === 'restore' && event.entityId === String(row.id));
+    expect(restoreAudit.beforeJson.receiptData.dataUrl).toBe('[comprovante armazenado localmente]');
+    expect(restoreAudit.afterJson.receiptData.dataUrl).toBe('[comprovante armazenado localmente]');
+    await api('/finance/transactions/reset', { token: session.token, method: 'POST', body: '{}' });
+    expect(mockStore.state.transactions.find(item => item.id === row.id).statusBeforeDelete).toBe('pending');
+    await api(`/finance/transactions/${row.id}/restore`, { token: session.token, method: 'POST', body: '{}' });
+    expect(mockStore.state.transactions.find(item => item.id === row.id)).toMatchObject({ status: 'pending', statusBeforeDelete: null });
   });
 
   it('rejeita valores fora de centavos inteiros e datas impossíveis', async () => {

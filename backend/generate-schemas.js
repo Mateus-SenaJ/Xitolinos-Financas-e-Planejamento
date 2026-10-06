@@ -14,7 +14,7 @@ const types = [
   ['finance', 'finance_actions', 'Operações financeiras', { name: text(false, 60), ...owner }],
   ['account', 'accounts', 'Conta', {
     name: text(true, 60), institution: text(false, 60), type: enumeration(['checking','digital','cash','savings','reserve','investment','other'], 'checking'),
-    openingBalanceCents: integer(), isLiquid: { type: 'boolean', default: true }, status: enumeration(['active','archived'], 'active'), notes: { type: 'text' }, ...owner
+    openingBalanceCents: integer(), openingBalanceDate: date(false), isLiquid: { type: 'boolean', default: true }, status: enumeration(['active','archived'], 'active'), notes: { type: 'text' }, ...owner
   }],
   ['category', 'categories', 'Categoria', {
     name: text(true, 50), type: enumeration(['income','expense','transfer'], 'expense'), icon: text(false, 12), status: enumeration(['active','archived'], 'active'),
@@ -29,7 +29,7 @@ const types = [
     amountCents: integer(true, 1), date: date(true), dueDate: date(false), purchaseDate: date(false), paidAt: date(false),
     method: enumeration(['account','pix','cash','debit','card','transfer'], 'account'),
     status: enumeration(['paid','pending','planned','settled','voided'], 'paid'), source: enumeration(['manual','card','recurrence','import','shopping'], 'manual'),
-    installmentGroup: text(false, 80), installmentNumber: integer(), installmentCount: integer(), memo: { type: 'text' }, deletedAt: { type: 'datetime' },
+    installmentGroup: text(false, 80), installmentNumber: integer(), installmentCount: integer(), memo: { type: 'text' }, receiptData: { type: 'json' }, statusBeforeDelete: enumeration(['paid','pending','planned','settled']), deletedAt: { type: 'datetime' },
     shoppingImportId: { ...text(false, 80), unique: true }, spendingContext: enumeration(['routine','extra']),
     legacyId: text(false, 120),
     account: relation('api::account.account'), counterpartyAccount: relation('api::account.account'), category: relation('api::category.category'),

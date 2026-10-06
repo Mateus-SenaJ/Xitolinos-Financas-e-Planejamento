@@ -1,4 +1,5 @@
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { recognizeDocumentText } from './receipt-ocr.js';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:1337';
 const androidBuild = import.meta.env.MODE === 'android';
@@ -89,8 +90,10 @@ export async function authenticateNativeBiometry(reason = 'Confirme sua identida
 }
 
 export async function saveLocalFile(fileName, content, mimeType) {
+  const dataUrl = typeof content === 'string' ? content.match(/^data:[^;,]+;base64,([A-Za-z0-9+/=]+)$/) : null;
   if (!androidBuild) {
-    const blob = new Blob([content], { type: mimeType });
+    const binary = dataUrl ? Uint8Array.from(atob(dataUrl[1]), character => character.charCodeAt(0)) : content;
+    const blob = new Blob([binary], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -104,9 +107,9 @@ export async function saveLocalFile(fileName, content, mimeType) {
   const { Share } = await import('@capacitor/share');
   const file = await Filesystem.writeFile({
     path: `exports/${Date.now()}-${safeName}`,
-    data: String(content),
+    data: dataUrl ? dataUrl[1] : String(content),
     directory: Directory.Cache,
-    encoding: Encoding.UTF8,
+    ...(dataUrl ? {} : { encoding: Encoding.UTF8 }),
     recursive: true
   });
   await Share.share({ title: fileName, text: 'Arquivo exportado localmente pelo Xitolinos.', files: [file.uri], dialogTitle: 'Compartilhar arquivo' });
@@ -114,18 +117,20 @@ export async function saveLocalFile(fileName, content, mimeType) {
 
 export async function parseStatement(file) {
   const fileName = file.name.toLocaleLowerCase('pt-BR');
-  if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(fileName)) {
-    throw new Error('Extratos em imagem não podem ser lidos neste modo offline. O OCR local ainda não está disponível; use CSV ou PDF com texto selecionável.');
-  }
+  const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName);
   if (fileName.endsWith('.json')) {
     const parsed = JSON.parse(await file.text());
     return Array.isArray(parsed) ? parsed : parsed.rows || [];
   }
-  const text = file.type === 'application/pdf' || fileName.endsWith('.pdf')
-    ? await readPdf(file)
-    : await file.text();
-  if (!text.trim()) throw new Error('Nenhum texto foi encontrado. PDFs digitalizados como imagem exigem OCR local, que ainda não está disponível.');
-  return parseStatementText(text);
+  const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
+  let text = isImage ? await recognizeDocumentText(file) : isPdf ? await readPdf(file) : await file.text();
+  let rows = parseStatementText(text);
+  if (isPdf && !rows.length) {
+    text = await recognizeDocumentText(file, undefined, { forceOcr: true });
+    rows = parseStatementText(text);
+  }
+  if (!rows.length) throw new Error('Não consegui reconhecer linhas com data, descrição e valor. Confira se a imagem está nítida e o extrato mostra esses três campos.');
+  return rows;
 }
 
 async function readPdf(file) {
@@ -135,7 +140,14 @@ async function readPdf(file) {
   const pages = await Promise.all(Array.from({ length: document.numPages }, async (_, index) => {
     const page = await document.getPage(index + 1);
     const content = await page.getTextContent();
-    return content.items.map(item => item.str).join(' ');
+    const lines = [];
+    for (const item of content.items.filter(value => value.str?.trim()).sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4])) {
+      const y = item.transform[5];
+      let line = lines.find(value => Math.abs(value.y - y) < 3);
+      if (!line) { line = { y, items: [] }; lines.push(line); }
+      line.items.push({ x: item.transform[4], text: item.str.trim() });
+    }
+    return lines.sort((a, b) => b.y - a.y).map(line => line.items.sort((a, b) => a.x - b.x).map(value => value.text).join(' ')).join('\n');
   }));
   return pages.join('\n');
 }

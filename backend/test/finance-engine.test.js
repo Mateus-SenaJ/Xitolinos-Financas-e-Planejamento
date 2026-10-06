@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { installments, recurringOccurrences, normalizeMerchant, classifyImportedRows, totalsForMonth, shiftMonth } = require('../src/finance-engine');
+const { getStatusBeforeDelete, getRestoredTransactionStatus, auditTransaction } = require('../src/finance-api');
 
 test('divide parcelamento em centavos sem perder valor', () => {
   assert.deepEqual(installments(10001, 3), [3334, 3334, 3333]);
@@ -46,4 +47,22 @@ test('resumo explica despesas pagas e compromissos do mês e não presume saque 
   assert.equal(summary.projectedEndBalanceCents, 4000);
   assert.deepEqual(summary.expenseExplanation.recordIds, [1, 'rent']);
   assert.equal(shiftMonth('2026-12', 1), '2027-01');
+});
+
+
+test('lixeira restaura o estado original de movimenta??es pendentes', () => {
+  const pending = { status: 'pending', date: '2026-10-07' };
+  const deleted = { ...pending, statusBeforeDelete: getStatusBeforeDelete(pending), status: 'voided' };
+  assert.equal(deleted.statusBeforeDelete, 'pending');
+  assert.equal(getRestoredTransactionStatus(deleted, '2026-10-08'), 'pending');
+  assert.equal(getRestoredTransactionStatus({ status: 'voided', date: '2026-10-07' }, '2026-10-06'), 'planned');
+});
+
+
+test('auditoria de movimenta??es conserva metadados sem duplicar arquivo de comprovante', () => {
+  const row = { id: 5, receiptData: { fileName: 'recibo.jpg', dataUrl: 'data:image/jpeg;base64,dGVzdA==' } };
+  const safe = auditTransaction(row);
+  assert.equal(safe.receiptData.fileName, 'recibo.jpg');
+  assert.equal(safe.receiptData.dataUrl, '[comprovante armazenado localmente]');
+  assert.equal(row.receiptData.dataUrl, 'data:image/jpeg;base64,dGVzdA==');
 });

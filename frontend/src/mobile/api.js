@@ -8,6 +8,9 @@ const today = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 const moneyText = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
+const restorableTransactionStatuses = new Set(['paid', 'pending', 'planned', 'settled']);
+const statusBeforeDelete = row => restorableTransactionStatuses.has(row.status) ? row.status : restorableTransactionStatuses.has(row.statusBeforeDelete) ? row.statusBeforeDelete : row.date <= today() ? 'paid' : 'planned';
+const restoredTransactionStatus = row => restorableTransactionStatuses.has(row.statusBeforeDelete) ? row.statusBeforeDelete : row.date <= today() ? 'paid' : 'planned';
 const makeSalt = () => [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('');
 const toHex = bytes => [...new Uint8Array(bytes)].map(value => value.toString(16).padStart(2, '0')).join('');
 
@@ -44,6 +47,27 @@ function amount(value) {
   if (!Number.isSafeInteger(cents) || cents <= 0) throw new Error('Informe um valor positivo em centavos.');
   return cents;
 }
+
+function nonNegativeCents(value, label) {
+  const cents = Number(value);
+  if (!Number.isSafeInteger(cents) || cents < 0) throw new Error(`${label} precisa ser zero ou um valor positivo em centavos.`);
+  return cents;
+}
+
+function validateReceiptData(value) {
+  if (value == null) return null;
+  if (!value || !['image/jpeg', 'application/pdf'].includes(value.mimeType)
+    || typeof value.dataUrl !== 'string' || !value.dataUrl.startsWith(`data:${value.mimeType};base64,`)
+    || value.dataUrl.length > 2_900_000) throw new Error('O comprovante deve ser uma imagem ou PDF local de até 2 MB.');
+  const extracted = value.extracted && typeof value.extracted === 'object' ? value.extracted : {};
+  return { fileName: String(value.fileName || 'comprovante').slice(0, 180), mimeType: value.mimeType,
+    dataUrl: value.dataUrl, confidence: Math.max(0, Math.min(100, Number(value.confidence) || 0)),
+    extracted: { description: String(extracted.description || '').slice(0, 100), date: String(extracted.date || '').slice(0, 10),
+      amountCents: Number.isSafeInteger(Number(extracted.amountCents)) ? Number(extracted.amountCents) : null,
+      transactionCode: String(extracted.transactionCode || '').slice(0, 80), receiptNumber: String(extracted.receiptNumber || '').slice(0, 60) } };
+}
+
+const auditTransaction = row => row ? { ...row, receiptData: row.receiptData ? { ...row.receiptData, dataUrl: '[comprovante armazenado localmente]' } : null } : row;
 
 function dateValue(value, label = 'Data') {
   const result = String(value || '');
@@ -101,12 +125,12 @@ function createTransaction(state, input, extra = {}) {
       cardId: card?.id || null, recurrenceId: extra.recurrenceId || null, incomeSourceId: extra.incomeSourceId || null,
       shoppingImportId: extra.shoppingImportId || null,
       spendingContext: type === 'expense' && ['routine', 'extra'].includes(input.spendingContext) ? input.spendingContext : undefined,
-      memo: String(input.memo || '').slice(0, 500), deletedAt: null, paidAt: null
+      memo: String(input.memo || '').slice(0, 500), receiptData: index === 0 ? validateReceiptData(input.receiptData) : null, deletedAt: null, paidAt: null
     };
     state.transactions.push(row);
     return row;
   });
-  recordAudit(state, 'create', 'transaction', group || rows[0].id, null, rows);
+  recordAudit(state, 'create', 'transaction', group || rows[0].id, null, rows.map(auditTransaction));
   return { items: rows.map(row => flatTransaction(row, state)), installmentGroup: group };
 }
 
@@ -114,7 +138,8 @@ function flatTransaction(row, state) {
   const selectedCategory = state.categories.find(item => item.id === row.categoryId);
   const selectedAccount = state.accounts.find(item => item.id === row.accountId);
   const selectedCard = state.cards.find(item => item.id === row.cardId);
-  return { ...row, category: selectedCategory?.name || 'Outros', categoryId: selectedCategory?.id || null, accountName: selectedAccount?.name || '', cardName: selectedCard?.name || '' };
+  const { receiptData, ...safeRow } = row;
+  return { ...safeRow, hasReceipt: Boolean(receiptData), receiptFileName: receiptData?.fileName || '', receiptExtracted: receiptData?.extracted || null, category: selectedCategory?.name || 'Outros', categoryId: selectedCategory?.id || null, accountName: selectedAccount?.name || '', cardName: selectedCard?.name || '' };
 }
 
 function flatSchedule(state, row) {
@@ -150,6 +175,32 @@ function createSchedule(state, key, input) {
   if (key === 'recurrences' && frequency === 'once') item.frequency = 'monthly';
   state[key].push(item);
   recordAudit(state, 'create', key === 'recurrences' ? 'recurrence' : 'income-source', item.id, null, item);
+  return flatSchedule(state, item);
+}
+
+function updateSchedule(state, key, id, input) {
+  const item = state[key].find(row => row.id === Number(id));
+  if (!item) throw new Error('Compromisso programado não encontrado.');
+  const previous = structuredClone(item);
+  if (input.name !== undefined) {
+    const name = String(input.name || '').trim();
+    if (!name || name.length > 90) throw new Error('Informe um nome com até 90 caracteres.');
+    item.name = name;
+  }
+  if (input.amountCents !== undefined) item.amountCents = amount(input.amountCents);
+  if (input.frequency !== undefined) {
+    if (!['weekly', 'fortnightly', 'monthly', 'yearly', 'once'].includes(input.frequency)) throw new Error('Frequência inválida.');
+    item.frequency = key === 'recurrences' && input.frequency === 'once' ? 'monthly' : input.frequency;
+  }
+  if (input.startDate !== undefined) item.startDate = dateValue(input.startDate);
+  if (input.nextDate !== undefined) item.nextDate = dateValue(input.nextDate);
+  if (input.dayOfMonth !== undefined) item.dayOfMonth = Math.max(1, Math.min(31, Number(input.dayOfMonth)));
+  if (input.reminderDaysBefore !== undefined && key === 'incomeSources') item.reminderDaysBefore = Math.max(0, Math.min(30, Number(input.reminderDaysBefore)));
+  if (input.categoryId !== undefined) item.categoryId = input.categoryId ? category(state, input.categoryId).id : null;
+  if (input.accountId !== undefined) item.accountId = activeAccount(state, input.accountId).id;
+  if (input.method !== undefined && key === 'recurrences') item.method = ['account', 'pix', 'cash', 'debit', 'card'].includes(input.method) ? input.method : 'account';
+  if (input.active !== undefined) item.active = Boolean(input.active);
+  recordAudit(state, 'update', key === 'recurrences' ? 'recurrence' : 'income-source', item.id, previous, item);
   return flatSchedule(state, item);
 }
 
@@ -445,6 +496,20 @@ export async function api(path, options = {}) {
     await writeMobileState(state);
     return result;
   }
+  const receiptMatch = pathname.match(/^\/finance\/transactions\/(\d+)\/receipt$/);
+  if (receiptMatch && method === 'GET') {
+    const row = state.transactions.find(item => item.id === Number(receiptMatch[1]) && !item.deletedAt);
+    if (!row?.receiptData) throw new Error('Este lançamento não tem comprovante anexado.');
+    return { receipt: row.receiptData };
+  }
+  if (pathname === '/finance/transactions/reset' && method === 'POST') {
+    const active = state.transactions.filter(row => !row.deletedAt && row.status !== 'voided');
+    const deletedAt = new Date().toISOString();
+    for (const row of active) { row.statusBeforeDelete = statusBeforeDelete(row); row.status = 'voided'; row.deletedAt = deletedAt; }
+    recordAudit(state, 'reset-to-trash', 'transaction', user.id, { count: active.length }, { deletedCount: active.length });
+    await writeMobileState(state);
+    return { deletedCount: active.length };
+  }
   if (pathname === '/finance/recurrences' && method === 'POST') {
     const item = createSchedule(state, 'recurrences', body);
     await writeMobileState(state);
@@ -455,11 +520,28 @@ export async function api(path, options = {}) {
     await writeMobileState(state);
     return { item };
   }
+  const scheduleMatch = pathname.match(/^\/finance\/(recurrences|incomes)\/(\d+)$/);
+  if (scheduleMatch && method === 'PUT') {
+    const key = scheduleMatch[1] === 'recurrences' ? 'recurrences' : 'incomeSources';
+    const item = updateSchedule(state, key, scheduleMatch[2], body);
+    await writeMobileState(state);
+    return { item };
+  }
   if (pathname === '/finance/accounts' && method === 'POST') {
     const name = String(body.name || '').trim();
     if (!name || name.length > 60) throw new Error('Informe o nome da conta.');
-    const item = { id: state.nextId++, name, institution: String(body.institution || '').slice(0, 60), type: body.type || 'checking', openingBalanceCents: Number(body.openingBalanceCents || 0), isLiquid: body.isLiquid !== false, status: 'active' };
+    const item = { id: state.nextId++, name, institution: String(body.institution || '').slice(0, 60), type: body.type || 'checking', openingBalanceCents: Number(body.openingBalanceCents || 0), openingBalanceDate: body.openingBalanceDate ? dateValue(body.openingBalanceDate) : null, isLiquid: body.isLiquid !== false, status: 'active' };
     state.accounts.push(item); recordAudit(state, 'create', 'account', item.id, null, item); await writeMobileState(state); return { item };
+  }
+  const accountMatch = pathname.match(/^\/finance\/accounts\/(\d+)$/);
+  if (accountMatch && method === 'PUT') {
+    const item = state.accounts.find(row => row.id === Number(accountMatch[1]));
+    if (!item) throw new Error('Conta não encontrada.');
+    const previous = structuredClone(item);
+    if (body.name !== undefined) { const name = String(body.name || '').trim(); if (!name || name.length > 60) throw new Error('Informe o nome da conta.'); item.name = name; }
+    if (body.openingBalanceCents !== undefined) item.openingBalanceCents = nonNegativeCents(body.openingBalanceCents, 'O saldo inicial');
+    if (body.openingBalanceDate !== undefined) item.openingBalanceDate = dateValue(body.openingBalanceDate);
+    recordAudit(state, 'update', 'account', item.id, previous, item); await writeMobileState(state); return { item };
   }
   if (pathname === '/finance/categories' && method === 'POST') {
     const name = String(body.name || '').trim();
@@ -483,15 +565,21 @@ export async function api(path, options = {}) {
       row.spendingContext = body.spendingContext;
     }
     if (body.memo !== undefined) row.memo = String(body.memo).slice(0, 500);
-    recordAudit(state, 'update', 'transaction', row.id, previous, row); await writeMobileState(state); return { item: flatTransaction(row, state) };
+    if (body.receiptData !== undefined) row.receiptData = validateReceiptData(body.receiptData);
+    recordAudit(state, 'update', 'transaction', row.id, auditTransaction(previous), auditTransaction(row)); await writeMobileState(state); return { item: flatTransaction(row, state) };
   }
   if (transactionMatch && method === 'POST' && transactionMatch[2]) {
     const row = state.transactions.find(item => item.id === Number(transactionMatch[1]));
     if (!row) throw new Error('Lançamento não encontrado.');
     const previous = { ...row };
-    if (transactionMatch[2] === 'delete') { row.status = 'voided'; row.deletedAt = new Date().toISOString(); }
-    else { row.status = row.date <= today() ? 'paid' : 'planned'; row.deletedAt = null; }
-    recordAudit(state, transactionMatch[2], 'transaction', row.id, previous, row); await writeMobileState(state); return { item: flatTransaction(row, state) };
+    if (transactionMatch[2] === 'delete') {
+      row.statusBeforeDelete = statusBeforeDelete(row);
+      row.status = 'voided'; row.deletedAt = new Date().toISOString();
+    } else {
+      row.status = restoredTransactionStatus(row);
+      row.statusBeforeDelete = null; row.deletedAt = null;
+    }
+    recordAudit(state, transactionMatch[2], 'transaction', row.id, auditTransaction(previous), auditTransaction(row)); await writeMobileState(state); return { item: flatTransaction(row, state) };
   }
 
   const settleInstallments = pathname.match(/^\/finance\/installments\/([A-Za-z0-9_-]+)\/settle$/);
@@ -501,12 +589,12 @@ export async function api(path, options = {}) {
     const rows = state.transactions.filter(item => item.installmentGroup === group && item.status !== 'voided');
     if (!rows.length) throw new Error('Parcelamento não encontrado.');
     const remaining = rows.filter(item => item.status !== 'paid');
-    for (const row of remaining) { row.status = 'voided'; row.deletedAt = new Date().toISOString(); }
+    for (const row of remaining) { row.statusBeforeDelete = statusBeforeDelete(row); row.status = 'voided'; row.deletedAt = new Date().toISOString(); }
     const result = createTransaction(state, {
       description: `Quitação: ${rows[0].description}`, type: 'expense', amountCents: paidAmountCents,
       date: today(), method: 'account', categoryId: rows[0].categoryId, accountId: rows[0].accountId
     });
-    recordAudit(state, 'settle-installments', 'transaction', group, rows, { paidAmountCents, canceledCount: remaining.length });
+    recordAudit(state, 'settle-installments', 'transaction', group, rows.map(auditTransaction), { paidAmountCents, canceledCount: remaining.length });
     await writeMobileState(state);
     return { items: result.items, canceledCount: remaining.length };
   }
@@ -527,6 +615,19 @@ export async function api(path, options = {}) {
     const item = { id: state.nextId++, name: String(body.name || 'Cartão').trim().slice(0, 60), network: String(body.network || '').slice(0, 30), lastFour: String(body.lastFour || '').slice(-4), closingDay, dueDay, limitCents: Number(body.limitCents || 0), accountId: activeAccount(state, body.accountId || state.accounts.find(row => row.isLiquid && row.status === 'active')?.id).id, active: true };
     state.cards.push(item); recordAudit(state, 'create', 'card', item.id, null, item); await writeMobileState(state); return { item: flatSchedule(state, item) };
   }
+  const cardMatch = pathname.match(/^\/finance\/cards\/(\d+)$/);
+  if (cardMatch && method === 'PUT') {
+    const item = state.cards.find(row => row.id === Number(cardMatch[1]));
+    if (!item) throw new Error('Cartão não encontrado.');
+    const previous = structuredClone(item);
+    if (body.name !== undefined) { const name = String(body.name || '').trim(); if (!name || name.length > 60) throw new Error('Informe o nome do cartão.'); item.name = name; }
+    for (const field of ['closingDay', 'dueDay']) if (body[field] !== undefined) { const day = Number(body[field]); if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('Fechamento e vencimento precisam ser dias entre 1 e 31.'); item[field] = day; }
+    if (body.limitCents !== undefined) item.limitCents = nonNegativeCents(body.limitCents, 'O limite do cartão');
+    if (body.network !== undefined) item.network = String(body.network || '').slice(0, 30);
+    if (body.lastFour !== undefined) item.lastFour = String(body.lastFour || '').slice(-4);
+    if (body.accountId !== undefined) item.accountId = activeAccount(state, body.accountId).id;
+    recordAudit(state, 'update', 'card', item.id, previous, item); await writeMobileState(state); return { item: flatSchedule(state, item) };
+  }
 
   const recurrenceDone = pathname.match(/^\/finance\/recurrences\/(\d+)\/complete$/);
   if (recurrenceDone && method === 'POST') {
@@ -542,7 +643,7 @@ export async function api(path, options = {}) {
     const item = state.incomeSources.find(row => row.id === Number(incomeReceive[1]) && row.active);
     if (!item) throw new Error('Recebimento não encontrado ou inativo.');
     const date = dateValue(body.date || today());
-    const result = createTransaction(state, { description: item.name, type: 'income', amountCents: item.amountCents, date, method: 'account', accountId: item.accountId, categoryId: item.categoryId }, { incomeSourceId: item.id });
+    const result = createTransaction(state, { description: item.name, type: 'income', amountCents: body.amountCents === undefined ? item.amountCents : Number(body.amountCents), date, method: 'account', accountId: item.accountId, categoryId: item.categoryId, receiptData: body.receiptData }, { incomeSourceId: item.id });
     if (item.frequency !== 'once') {
       item.nextDate = advanceScheduleDate(item.nextDate, item.frequency, item.dayOfMonth);
     } else item.active = false;

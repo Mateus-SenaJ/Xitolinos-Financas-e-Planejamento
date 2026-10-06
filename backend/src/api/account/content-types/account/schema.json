@@ -40,6 +40,10 @@
       "required": false,
       "min": 0
     },
+    "openingBalanceDate": {
+      "type": "date",
+      "required": false
+    },
     "isLiquid": {
       "type": "boolean",
       "default": true

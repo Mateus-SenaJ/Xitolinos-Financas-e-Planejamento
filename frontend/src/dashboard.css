@@ -446,6 +446,17 @@
 .shopping-item-main { display: grid; min-width: 0; gap: 4px; }
 .shopping-item-main strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .shopping-item-main small { color: var(--muted); font-size: 8px; line-height: 1.4; }
+.shopping-item { grid-template-columns: 30px minmax(125px, 1fr) 58px 82px 82px 88px 82px 28px; }
+.shopping-item-total { display: grid; gap: 3px; text-align: right; }
+.shopping-item-total small { color: var(--muted); font-size: 8px; }
+.shopping-item-total strong { font-size: 10px; white-space: nowrap; }
+.shopping-status-menu { position: relative; min-width: 0; }
+.shopping-status-menu summary { display: grid; min-height: 32px; align-content: center; gap: 2px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 8px; cursor: pointer; list-style: none; }
+.shopping-status-menu summary::-webkit-details-marker { display: none; }
+.shopping-status-menu summary::after { content: "⌄"; position: absolute; right: 8px; top: 7px; }
+.shopping-status-menu summary small { max-width: 100%; overflow: hidden; padding-right: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.shopping-status-menu select { width: 100%; }
+.shopping-add-grid { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .shopping-item-field { display: grid; gap: 3px; min-width: 0; color: var(--muted); font-size: 8px; }
 .shopping-item-field input { width: 100%; min-height: 32px; padding: 5px 6px; font-size: 10px; }
 .shopping-item select { min-width: 0; min-height: 32px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 9px; }
@@ -509,12 +520,14 @@
   .shopping-add-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shopping-add-grid label:first-child { grid-column: 1 / -1; }
   .shopping-add-grid .button { grid-column: 1 / -1; }
-  .shopping-item { grid-template-columns: 28px repeat(3, minmax(0, 1fr)); gap: 6px; padding: 9px 0; }
+  .shopping-item { grid-template-columns: 28px repeat(4, minmax(0, 1fr)); gap: 6px; padding: 9px 0; }
   .shopping-item-state { grid-column: 1; grid-row: 1; }
   .shopping-item-main { grid-column: 2 / -1; grid-row: 1; }
   .shopping-item-field { grid-row: 2; }
-  .shopping-item select { grid-column: 2 / 4; grid-row: 3; }
-  .shopping-item > .row-action { grid-column: 4; grid-row: 3; justify-self: end; }
+  .shopping-item-total { grid-row: 2; }
+  .shopping-status-menu { grid-column: 1 / 5; grid-row: 3; }
+  .shopping-item select { grid-column: 1 / 5; grid-row: 3; }
+  .shopping-item > .row-action { grid-column: 5; grid-row: 3; justify-self: end; }
   .shopping-readonly-price { grid-column: 2 / -1; grid-row: 2; }
   .shopping-aside { grid-template-columns: 1fr; }
   .shopping-csv-preview .checkline { margin: 10px 0; }

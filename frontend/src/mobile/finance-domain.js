@@ -144,16 +144,19 @@ function projectionsFor(month, state) {
 
 function liquidBalanceBefore(cutoff, accounts, transactions) {
   const liquid = new Set(accounts.filter(item => item.isLiquid && item.status !== 'archived').map(item => item.id));
-  let balance = accounts.filter(item => liquid.has(item.id)).reduce((sum, item) => sum + Number(item.openingBalanceCents || 0), 0);
+  const accountById = new Map(accounts.map(item => [item.id, item]));
+  let balance = accounts.filter(item => liquid.has(item.id) && (!item.openingBalanceDate || item.openingBalanceDate < cutoff)).reduce((sum, item) => sum + Number(item.openingBalanceCents || 0), 0);
   for (const row of transactions) {
     if (row.status !== 'paid') continue;
     const date = row.paidAt || (row.method === 'card' ? row.dueDate || row.date : row.date);
     if (!date || date >= cutoff) continue;
-    if (row.type === 'income' && liquid.has(row.accountId)) balance += row.amountCents;
-    if (row.type === 'expense' && liquid.has(row.accountId)) balance -= row.amountCents;
+    const accountId = row.accountId, counterpartyId = row.counterpartyAccountId;
+    const afterOpening = id => !accountById.get(id)?.openingBalanceDate || date >= accountById.get(id).openingBalanceDate;
+    if (row.type === 'income' && liquid.has(accountId) && afterOpening(accountId)) balance += row.amountCents;
+    if (row.type === 'expense' && liquid.has(accountId) && afterOpening(accountId)) balance -= row.amountCents;
     if (row.type === 'transfer') {
-      if (liquid.has(row.accountId)) balance -= row.amountCents;
-      if (liquid.has(row.counterpartyAccountId)) balance += row.amountCents;
+      if (liquid.has(accountId) && afterOpening(accountId)) balance -= row.amountCents;
+      if (liquid.has(counterpartyId) && afterOpening(counterpartyId)) balance += row.amountCents;
     }
   }
   return balance;
@@ -225,6 +228,17 @@ export function buildMobileDashboard(state, selectedMonth, today = localToday())
   const month = validMonth(selectedMonth || today.slice(0, 7));
   const transactions = state.transactions.map(row => flatTransaction(row, state));
   const currentMonth = today.slice(0, 7);
+  const historyMonths = Array.from({ length: 12 }, (_, index) => shiftMonth(currentMonth, index - 11));
+  const historyMap = Object.fromEntries(historyMonths.map(period => [period, { month: period, totalCents: 0, routineCents: 0, extraCents: 0 }]));
+  for (const row of state.transactions) {
+    if (row.type !== 'expense' || row.status !== 'paid' || row.deletedAt) continue;
+    const period = monthKey(row.paidAt || row.date);
+    const point = historyMap[period];
+    if (!point) continue;
+    point.totalCents += Number(row.amountCents || 0);
+    if (row.spendingContext === 'extra') point.extraCents += Number(row.amountCents || 0);
+    else point.routineCents += Number(row.amountCents || 0);
+  }
   const ranges = Array.from({ length: 19 }, (_, index) => shiftMonth(currentMonth, index - 12));
   if (!ranges.includes(month)) ranges.push(month);
   ranges.sort();
@@ -262,11 +276,11 @@ export function buildMobileDashboard(state, selectedMonth, today = localToday())
   const close = state.monthCloses.find(item => item.month === month) || null;
   return {
     month, currentMonth, nextMonth: shiftMonth(currentMonth, 1), currentCashCents,
-    totals: summary, details: rows, categoryTotals: categoryTotals(summary.expenses),
+    totals: summary, details: rows, trash: transactions.filter(row => row.deletedAt), categoryTotals: categoryTotals(summary.expenses),
     budgets: monthBudgets.map(item => ({ ...item, usedCents: used[item.categoryName] || 0 })),
     accounts: state.accounts, categories: state.categories, cards: cardInvoices, recurrences: state.recurrences,
     incomeSources: state.incomeSources, reserves: state.reserves, goals: state.goals, preferences: state.preferences,
-    monthSummaries, close, cardAlerts, notifications: notificationsFor(state, today, cardAlerts, transactions, currentMonth),
+    monthSummaries, spendingHistory: historyMonths.map(period => historyMap[period]), close, cardAlerts, notifications: notificationsFor(state, today, cardAlerts, transactions, currentMonth),
     deliverySpending: categoryTotals(transactions.filter(row => row.date >= `${currentMonth}-01` && row.date <= today)),
     deliveryRecommendation: { month, maximumAmountCents: Math.min(availableForDeliveryCents, deliveryBudgetRemainderCents), foodBudgetRemainderCents: foodBudget ? deliveryBudgetRemainderCents : null, minimumReserveCents: Number(state.preferences.minimumReserveCents || 0) },
     reserveSummary: { totalCents: state.reserves.reduce((sum, item) => sum + Number(item.balanceCents || 0), 0), emergencyBalanceCents: emergencyReserveCents, averageMonthlyExpenseCents: monthlyExpenseBaselineCents, emergencyCoverageMonths: monthlyExpenseBaselineCents ? Number((emergencyReserveCents / monthlyExpenseBaselineCents).toFixed(1)) : 0, recommendedCoverageMonths: 6 },
